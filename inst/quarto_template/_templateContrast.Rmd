@@ -1,0 +1,108 @@
+
+
+```{r}
+library(plotly)
+log_info('Inside Contrast Visual for Proteins ....')
+
+label_work <- gsub('Group','',label)
+  label_work_f <- gsub(' ','_',label_work)
+
+ggplotly(data$volcano)
+
+
+#pdf(file= file.path(path,paste0("Volcano",".pdf")), width=10, height=10, res=200, units="in")
+
+pdf(file= file.path(path,paste0("Volcano",".pdf")), paper='A4')
+
+data$volcano2file
+
+invisible(dev.off())
+
+#cat('Differential Expressed Proteins \n')
+library(DT)
+
+perc_field <- rowData(pe[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc') 
+DT::datatable( data$toptable %>% arrange(adjPval)  ,
+             extensions = c('FixedColumns', 'Scroller'),
+             options = list(fixedColumns = TRUE, scrollY = 400, scrollX = TRUE,
+                            scroller = TRUE, dom = 'Bfrtip', autoWidth = TRUE
+             ),
+ ) %>% formatStyle(
+   'differential_expressed',
+   target = 'row',
+    textAlign = 'center',
+    backgroundColor =  styleEqual(c('UP', 'DOWN'), c('#7fcdbb', '#fec44f')))%>% formatRound(columns=c('logFC'), digits=2) %>%
+  formatSignif(columns = c('pval', 'adjPval'), digits = 2) %>% formatString(perc_field, suffix='%')
+
+ttable <- data$toptable %>% arrange(adjPval) %>% dplyr::select(- differential_expressed)
+write.csv2(ttable, file= file.path(path,paste0("Toptable",".csv")))
+
+
+UP <- dim(data$toptable %>% filter(differential_expressed == 'UP'))[1]
+DOWN <-  dim(data$toptable %>% filter(differential_expressed == 'DOWN'))[1]
+
+
+if ( UP > 1 | DOWN > 1   ) {
+  
+   cat('Boxplot intensities of the top 10 DE proteins ordered by log2FC \n')
+
+      d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% arrange(logFC) %>% head(10)%>%   pull(Uniprot_id)
+      u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% arrange(logFC) %>% head(10) %>%  pull(Uniprot_id)
+
+     final <- c(d_l,u_l)
+     
+     #sample_sel <- c(rownames(colData(pe)[colData(pe)$Group == str_split_fixed(label_work,' - ',n=2)[1],] ),
+     #      rownames(colData(pe)[colData(pe)$Group == str_split_fixed(label_work,' - ',n=2)[2],])  ) 
+     
+     
+      #extracted_values <- split_extract_values(label, params$contrast)
+
+     log_info('Inside Boxplot intesisties')
+     contrast_values_parsed <- parse_comparison(input_comparison = label, variable_names =  params$contrast, pe = pe)
+     #log_info(contrast_values_paresed$Aleft)
+     #log_info(contrast_values_paresed$Brigh)
+
+     sample_sel <- select_samples_comparison(contrast_values_parsed, pe , params$contrast)
+
+  
+     #log_info(length(sample_sel))
+
+   ab <- as.data.frame(assay(pe[["proteinRS"]])[final,sample_sel])
+    
+   # In case you have more than one variable e.G interaction analysis 
+   # we take the first one.
+   if (length(params$contrast) > 1) {
+        values_2col <- params$contrast[1]
+      }else{
+        values_2col <- params$contrast
+      }
+   
+
+   ann <-  data$toptable  %>%   filter ( Uniprot_id  %in% final ) %>% dplyr::select(Uniprot_id ,Genes ,logFC,adjPval) %>%  mutate( Protein_info=  str_wrap( paste(Genes,'\n','LogFC:',round(logFC,2),'adjPval',format(adjPval,scientific= TRUE) ,sep=' '), width =15) ) %>% dplyr::select(- Genes, , -adjPval)
+   #%>% str_wrap(long_varname, width = var_width)
+
+   ab <-  ab %>% rownames_to_column('Protein') %>% left_join(ann, join_by(Protein  == Uniprot_id)) %>%  gather(Sample, Intensity ,- c(Protein ,Protein_info,logFC))%>% left_join( as.data.frame(colData(pe)) %>% rownames_to_column('Sample'), join_by(Sample) )
+  
+   
+    dep_plot_crip <- ab %>%
+  ggplot( aes(x= .data[[values_2col]], y=Intensity, fill=.data[[values_2col]] )) +
+    geom_boxplot() +
+    scale_fill_manual( values= c( "#6d0286", "#35B779FF") ) +
+    geom_jitter(color="black", size=1, alpha=0.8)  +
+       ylab('Summarized Protein Intensity ') +
+      facet_wrap( . ~ reorder(Protein_info, logFC), nrow = 2  )
+
+    print(dep_plot_crip)
+    
+    ggsave(dep_plot_crip , 
+       filename =  file.path(path,paste0('Boxplot_DE_proteins.pdf')),
+       device = "pdf",
+       height = 15, width = 25, units = "cm")
+    
+
+      # pdf(file= file.path(path,paste0('Boxplot_DE_proteins.pdf')),paper="a4")
+      # dep_plot_crip
+      # invisible(dev.off())
+}
+
+```

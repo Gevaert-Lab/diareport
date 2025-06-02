@@ -1,0 +1,42 @@
+
+
+```{r echo=FALSE, message=FALSE}
+
+library(dplyr)
+library(heatmaply)
+
+
+log_info('Heatmap Visual for proteins ...')
+
+selected <- data$toptable %>% filter(differential_expressed %in% c('UP','DOWN'))  %>% pull(Uniprot_id)
+
+#app <- as.data.frame(colData(pe)) %>% filter( Group %in% sample_rel)%>% arrange(Group) %>% dplyr::select(- SampleName)  
+
+data <-  assay(pe[["proteinRS"]])[selected,sample_rel]
+
+log_info(dim(data)[1])
+log_info(dim(data)[2])
+if (dim(data)[1] > 5) {
+  #   if (dim(data)[1] >= 50 & dim(data)[2] < 25){
+  #     w <- 800
+  #     h <- 1200
+  # }else{
+  #     w <- 800
+  #     h <-  700
+  # }
+  
+  #log_info('Plotting HEatmap')
+  #log_info("{paste(dim(data), collapse = '\n')}")
+  
+  heatmaply::heatmaply(data, scale = "column" , dendrogram =  "none", width = 1000 , height =900 , file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")),  cexRow = 1 )
+    
+  #   
+  # tmp <- heatmaply::heatmaply(data, scale = "column",  dendrogram = "none",cexRow = 1, file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+  #   rm(tmp)
+  } else {
+    cat ('Not enough DE proteins for heatmap visualization')
+  }  
+
+
+
+```

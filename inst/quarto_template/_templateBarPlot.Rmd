@@ -1,0 +1,51 @@
+
+
+```{r}
+library(reshape2)
+
+log_info("Inside BArPlot...")
+label_work <- gsub('Group','',label)
+  label_work_f <- gsub(' ','_',label_work)
+DE <- data$toptable
+
+filterUP <- function(DE, log2fc = 0, p = 0.1) {
+    nrow(DE[DE$logFC > log2fc & DE$adjPval <= p,])
+  }
+filterDOWN <- function(df, log2fc = 0, p = 0.1) {
+    nrow(DE[abs(DE$logFC) > log2fc & DE$adjPval <= p & DE$logFC < 0,])
+  }
+ 
+pVals <- c( 0.01, 0.05)
+fcVals <- c(0:(max(data$toptable$logFC) + 1))
+
+summary <- do.call(rbind, lapply(pVals, function(p) {
+  do.call(rbind, lapply(fcVals, function(f){
+    up <- filterUP(DE, f, p)
+    down <- filterDOWN(DE, f, p)
+    return(data.frame("logFC" = f, 
+                      "adjPval" = p, 
+                      "upRegulated" = up, 
+                      "downRegulated" = down))
+  }))
+}))
+
+mdata <- melt(summary, id.vars = c('logFC', 'adjPval'))
+
+p <- ggplot(mdata, aes(x = logFC, y = value)) + 
+  geom_bar(aes(fill = variable), stat = 'identity', position = 'dodge') + 
+  facet_grid(~ adjPval) + theme(legend.position = 'bottom', legend.title = element_blank()) + 
+  labs(title = 'Number of differentially up/down regulated protein / peptide', 
+       subtitle = 'based on different adjusted p-value and log2foldChange cut-off values')
+
+
+print(p)
+
+# Save image to folder
+# pdf(file = file.path(imagesDir, 'up_down_regulated_miRNAs_summary.pdf'))
+# print(p)
+# invisible(dev.off())
+
+
+
+
+```

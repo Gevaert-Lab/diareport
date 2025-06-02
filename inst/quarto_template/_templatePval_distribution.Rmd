@@ -1,0 +1,21 @@
+
+
+```{r}
+
+log_info('Inside QC P-value distribution ....')
+  
+data$toptable %>% ggplot( aes(x=pval,)) +
+    geom_histogram(binwidth=.02, alpha=.7, position="identity")
+
+#png(filename= file.path(path,paste0("P_val_Distribution",".png")), width=10, height=8, res=200, units="in")
+
+pdf(file= file.path(path,paste0("P_val_Distribution_",  ".pdf")), paper='A4')
+
+
+data$toptable %>% ggplot( aes(x=pval,)) +
+    geom_histogram(binwidth=.02, alpha=.7, position="identity")
+
+invisible(dev.off())
+
+
+```

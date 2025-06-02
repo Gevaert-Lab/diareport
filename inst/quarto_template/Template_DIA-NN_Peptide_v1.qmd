@@ -1,0 +1,682 @@
+---
+title: "DE Analysis Report (Peptide): `r params$title`"
+subtitle: "`r params$subtitle`"
+author: "`r params$author`"
+format: 
+  html:
+    fig-width: 12
+    fig-height: 10
+    toc: true
+    toc-title: 'DE Analysis'
+    title-block-banner: '#1b2944'
+    title-block-banner-color: '#f79646'
+    
+    
+
+execute: 
+  echo: false
+  warning: false
+embed-resources: true
+theme: 
+ - layout/brand 
+ - layout/custom.scss
+
+params:
+  description: ""
+  title: ""
+  subtitle: ""
+  author: "" 
+  formula: ""
+  comparisons: ""
+  contrast: ""
+  input_file: ""
+  design_file: ""
+  FC_thr: 1
+  adjpval_thr: 0.05
+  Proteotypic: TRUE
+  pep_per_prot: 3
+  nNonZero: 30
+  aggr_method: "medianPolish"
+  normalization: "quantiles"
+  filtering_contaminant: ""
+  contaminats_str: ""
+  folder_prj: ""
+  confounder_list: ""
+  PCA_comparison: "Group"
+  quantitative_features: "Precursor.Quantity"
+  filtPerGroup: ''
+  mbr: FALSE
+  wildstr_run: "CMB-"
+  DIANN_ver2: FALSE 
+  comparison_label: ""
+---
+
+
+```{r input}
+ #| output: false
+
+#includes:
+#      in-header: header.html
+source('utils_function.R')
+
+required_packages = c("QFeatures","msqrob2","readxl","SummarizedExperiment","visdat","ggrepel", "dplyr","tidyverse","magrittr","here","tidyr","plotly","DT","tibble","MSnbase",
+                    "factoextra","hrbrthemes","gridExtra","UpSetR",'logger', 'scales','pander','GGally','arrow','yaml')
+#print(required_packages)
+check_dependencies(required_packages)
+
+```
+
+## Experiment Description 
+
+`r params$description`
+
+```{r check_parameter}
+## set the logger
+log_threshold(INFO)
+log_appender(appender_console)
+log_appender(appender_file("logfile_peptide.log"), index = 2)
+
+formatter_data_frame <- function(df, ...) {
+     pander::pander_return(df, style = 'simple')
+}
+log_formatter(formatter_data_frame)
+log_formatter(formatter_glue)
+
+
+is_empty <- function(contrast) {
+  return(length(contrast) == 0 || (length(contrast) == 1 && contrast == ''))
+}
+
+detect_file_in_folder <- function(folder_path, pattern) { 
+          file <- list.files(folder_path, pattern = pattern); if(length(file) > 0) file[1] else "" }
+
+if(is_empty(params$contrast) ){
+  stop("Check parameter file: contrast is not set" )
+}
+
+if (all(params$comparison_label == '') ){
+  stop("Check parameter file: comparisons label is not set" )
+}
+
+if (all(params$comparisons == '') ){
+  stop("Check parameter file: comparisons is not set" )
+}
+
+if ( ! params$aggr_method %in% c('robustSummary','medianPolish','colMeans','colMedians')) {
+  stop('normalization method not allowed.  Methods allowed are : [ robustSummary, medianPolish, colMeans ]' )
+}
+if (params$aggr_method  == 'medianPolish'){
+  aggr_method_f <- MsCoreUtils::medianPolish
+}
+if (params$aggr_method  == 'RobustSummary'){
+  aggr_method_f <- RobustSummary
+}
+if (params$aggr_method  == 'colMeans'){
+  aggr_method_f <- base::colMeans
+}
+if (params$aggr_method  == 'colMeadians'){
+  aggr_method_f <- matrixStats:::colMedians
+}
+
+if ( ! params$normalization %in% c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.meda", "quantiles","quantiles.robust","vsn") ){ 
+   stop('normalization method not allowed. Methods allowed are : [ sum, max, center.mean, center.median, div.mean, div.median, diff.meda, quantiles,quantiles.robust,vsn]' )
+}
+
+if (params$filtering_contaminant){
+   if (params$contaminats_str == ""){
+     stop("Please provide a string to filter the contaminats proteins (e.g.: Cont_,Contaminats,..)")
+   } 
+}
+
+if (params$filtPerGroup == ''){
+      label_filtering <- ' among all the samples.'
+      }
+if (params$filtPerGroup == 'all'){
+      label_filtering <- ' in each group.'
+      }
+if (params$filtPerGroup == 'at_least_one'){
+      label_filtering <- ' in at least one group.'
+}
+
+# make a subfolder for each contrast
+if (!dir.exists(file.path(params$folder_prj))){
+  dir.create(file.path( params$folder_prj),recursive = TRUE)
+}
+ dir.create(file.path( params$folder_prj, "Result"),recursive = TRUE)
+min_info_design <- c("Sample","Run", "Group", "Replicate") 
+
+
+theme_set(theme_custom_vis())
+
+ st=format(Sys.time(), "%Y%m%d_%H%M")
+
+write(as.yaml(params), file =  file.path( params$folder_prj, paste0("DIAReport_parameter_",st ,  ".yaml")))
+
+ 
+```
+
+## Import data
+
+Reading DIA data from **`r basename(params$input_file)`** using *`r params$quantitative_features`* from DIA-NN as quantitative features.
+`r if ( ! params$mbr) 'All the precursors with *Global Q-value and Global PG Q-value < 0.01* are used for the analysis' else 'All the precursors with *Lib Q-value and Lib PG Qvalue < 0.01* are used for the analysis'`
+
+```{r import data}
+
+  if (params$DIANN_ver2){
+   log_info('Reading Data PARQUET format...')
+   data <- read_parquet(params$input_file)
+  lst_wide_columns <- c('Run', 'Precursor.Id', 'Modified.Sequence', 'Stripped.Sequence', 'Protein.Group', 'Protein.Ids', 'Protein.Names', 'Genes', 'Proteotypic') 
+
+   
+  }else{
+     log_info('Reading Data TSV format...')
+     data <- read.csv(params$input_file,sep='\t')
+    lst_wide_columns <- c('Run', 'Precursor.Id', 'Modified.Sequence', 'Stripped.Sequence', 'Protein.Group', 'Protein.Ids', 'Protein.Names', 'Genes', 'Proteotypic','First.Protein.Description') 
+
+  }
+ 
+  
+  
+  
+  L <- readLines(params$design_file, n = 1)
+  if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv(params$design_file)
+
+  checkDIANN <-check_columns_presence(data, min_features=append(lst_wide_columns, params$quantitative_features))
+    
+  if (checkDIANN$status == 1 ) {
+    stop(checkDIANN$error)
+    } 
+  
+  dfMsqrob <- dfToWideMsqrob_20( data, precursorquan = params$quantitative_features,
+                          mbr = params$mbr, wide_colums = lst_wide_columns) 
+  
+  if (params$DIANN_ver2){
+    log_info('Retrieve Protein description (ver > 2.0)...')
+    
+    check_protein_desc <-  detect_file_in_folder(file.path(dirname(params$input_file)),
+                                                  'report.protein_description.tsv')
+    log_info(check_protein_desc)
+    log_info( file.path(dirname(params$input_file),check_protein_desc))
+    if (check_protein_desc != ""){
+      prt_desc <- read.csv( file.path(dirname(params$input_file),check_protein_desc),sep="\t"  )
+       
+    }else{
+       stop(paste0('file ','report.protein_description.tsv',  'not found in folder ->',
+       	            dirname(params$input_file),'\n',' Check your input path !' ))
+    }
+  
+    dfMsqrob<- dfMsqrob %>% mutate(app = sapply(str_split(Protein.Names, ";"), function(x) ifelse(length(x) > 0, x[1], NA))) %>% 
+     left_join( prt_desc %>% select(Protein.Name,Description) , 
+                join_by(app == Protein.Name)) %>% 
+    select(- app) %>% rename( First.Protein.Description =  Description   ) # filter(is.na(Description)) 
+  }
+
+  
+  diann_colname <- c("Precursor.Id" , "Modified.Sequence","Stripped.Sequence","Protein.Group",
+  "Protein.Ids","Protein.Names","Genes","Proteotypic","First.Protein.Description")
+## create q-feature obj from dia-NN and design  
+  result_qfeat <-  import2_qfeature (dfMsqrob, design, params, min_info_design, diann_colname = diann_colname )
+  
+  if  (result_qfeat$status == 1){
+     stop(result_qfeat$error)
+  }else{
+    pe <- result_qfeat$q_feat
+  }
+
+```
+
+## Filtering steps
+
+```{r preparation }
+
+
+
+  check_confounder_PCA<-checkConfounder(confounder= unique(unlist(str_split(params$PCA_comparison, "-"))), colsDesign=colnames(colData(pe)))
+if (check_confounder_PCA$status == 1){
+    stop(check_confounder_PCA$error)
+}
+
+pe <- add_rowdata_detection(pe,  design , assay = 'precursor' )
+
+
+
+orig_nFeat <- dim(pe[['precursor']])[1]
+
+
+```
+
+The filtering steps applied are:
+
+-   Keeping only precursors with more than \>= **`r params$nNonZero`%** of *non missing* values, `r label_filtering`
+-   `r if (params$Proteotypic) 'Selecting only proteotypic peptides' else 'Selecting both not and proteotypic peptides'`
+-   `r if (params$filtering_contaminant) 'Contaminant proteins are filtered ' else 'Contaminant proteins are not filtered'`
+
+
+
+```{r pre_processing}
+
+
+res_filt <- filteringNA_qfeat(pe , params, design)
+
+if  (res_filt$status == 1){
+    stop(res_filt$error)
+  }else{
+  
+    pe <- res_filt$q_feat
+  }
+
+result_process <- processing_qfeat_peptide(pe, params,aggr_method_f )  
+  
+if  (result_process$status == 1){
+    stop(result_process$error)
+  }else{
+    pe <- result_process$q_feat
+  }
+
+
+#pe <- infIsNA(pe, i='peptideNorm')
+
+pe <- add_rowdata_detection(pe,  design , assay = 'peptideNorm' )
+
+
+
+```
+
+
+The initial number of precursor features  was **`r orig_nFeat`**, after filtering  **`r dim(pe[['peptideNorm']])[1]`** features are retained.
+
+
+```{r Confanalysis_title, results='asis'}
+
+if ( ! is_empty(params$confounder_list)  )  {
+  
+  header <- "Confounder Analysis"
+  
+  cat('##', header, '\n\n')
+  
+  
+}
+
+```
+
+
+```{r confounder_value_analysis}
+log_info('Confounder Analysis')
+
+cData<-as.data.frame(colData(pe))
+list_numeric <- list()
+list_character <- list()
+
+if (all(params$confounder_list != '')) {
+  for  (col in params$confounder_list){
+     if  (is.factor (cData[[col]])) {
+       #log_info(paste0('Character - ', col))
+       list_character <- append(list_character, col)
+        
+     }else {
+       #log_info(paste0('Numeric - ', col))
+       list_numeric <- append(list_numeric, col)
+     }  
+  }
+  if (length(list_numeric) != 0) { 
+        cData_n<-cData%>%pivot_longer(cols=unlist(list_numeric), names_to="Numeric_Variables", values_to="Value")
+    
+        boxplot_num <-ggplot(cData_n, aes(x=Numeric_Variables, 
+    		                                  y=Value, fill=Group))+geom_boxplot()
+        print(boxplot_num)
+        pdf(file= file.path(params$folder_prj,"Result",
+                            paste0('Boxplot_num_confounder.pdf')),paper="a4")
+       boxplot_num <-ggplot(cData_n, aes(x=Numeric_Variables, y=Value, fill=Group)) + geom_boxplot()
+       print(boxplot_num)
+       invisible(dev.off())
+          
+  } 
+  
+ for (col_ch in unlist(list_character)){ 
+    #log_info(col_ch) 
+    boxplot_ch<- ggplot(cData, aes(x={{col_ch}}, fill=Group))+geom_bar()+ggtitle( {{col_ch}} ) 
+    print(boxplot_ch) 
+          pdf(file= file.path(params$folder_prj,"Result",paste0('Boxplot_ch_confounder.pdf')),paper="a4") 
+         boxplot_ch<- ggplot(cData, aes(x={{col_ch}}, fill=Group))+geom_bar()+ggtitle( {{col_ch}} ) 
+    print(boxplot_ch)   
+      
+      invisible(dev.off()) 
+  } 
+ 
+
+}
+
+
+```
+
+
+## Normalization
+
+Normalization of the precursor intensities are:
+
+-   Precursor  with the same peptide sequences are **summed** toghether at peptide level  
+-   Peptide intensities are log transformed and then normalized using **`r params$normalization`** approach.
+
+After all the step, the quantitaive features used in the downstream analysis are:
+
+- Number of peptide identified/quantified is : **`{r} dim(assay(pe[['peptideNorm']]))[1]`**
+
+
+```{r normalization_plot}
+
+#saveRDS(pe, 'PE__.Rds') 
+par(mfrow=c(1,3))
+limma::plotDensities(assay(pe[["precursor"]]),legend=FALSE,main='Raw precursor')
+limma::plotDensities(assay(pe[["peptideLog"]]),legend=FALSE,main='Peptide log-tranformed') 
+limma::plotDensities(assay(pe[["peptideNorm"]]),legend=FALSE,main='Peptide Normalized' )
+
+```
+
+
+## Data Missing Analysis
+
+The plot shows the completeness of the experiments at precursor and summarized level. On the the x-axis peptides/proteins are ordered based on the increasing NA content.
+
+```{r missing_val_analysis}
+peptidemissingness <- MSnbase::plotNA(assay(pe[["peptideNorm"]])) +
+  xlab("Precursor index (ordered by data completeness)") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  theme(strip.text.x = element_blank(),
+        strip.background = element_rect(colour="white", fill="white"),
+        legend.position=c(.35,.15)
+  ) +   ggtitle("Missingness - peptide level" )
+
+
+
+#missingness <- gridExtra::grid.arrange(peptidemissingness, proteinmissingness, nrow = 1)
+#print(missingness)
+
+```
+
+
+
+
+## Completeness Analysis 
+
+This section analyzes the completeness of protein readouts across all samples within each group. For each quantified peptide, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
+
+```{r completeness_analysis}
+log_info('Completness Analysis...')
+   custom_lower <- function(data, mapping, ...) {
+    
+      x_data <- data[[as_label(mapping$x)]]
+      y_data <- data[[as_label(mapping$x)]]
+     
+      
+      # Calculate mean and standard deviation
+      mean_x <- mean(x_data, na.rm = TRUE)
+      mean_y <- mean(y_data, na.rm = TRUE)
+      sd_x <- sd(x_data, na.rm = TRUE)
+      sd_y <- sd(y_data, na.rm = TRUE)
+      
+      ggplot(data = data, mapping = mapping) +
+      geom_jitter(  size=1,alpha= 0.8)+
+      geom_abline(slope = 1, intercept = mean_y - mean_x, color = 'blue')+
+      geom_abline(slope = 1, intercept = mean_y - mean_x + sd_y + sd_x, color = 'red', linetype = "dashed") +       # Mean + sigma line
+        geom_abline(slope = 1, intercept = mean_y - mean_x - sd_y - sd_x, color = 'red', linetype = "dashed")       # Mean - sigma line
+      
+      
+    }
+    
+    
+    custom_diag <- function(data, mapping, ...) {
+      ggplot(data = data, mapping = mapping) + 
+        geom_histogram(binwidth = 10, fill = "blue", color = "black") 
+    }
+    
+    
+    custom_diag <- function(data, mapping, ...) {
+      ggplot(data = data, mapping = mapping) + 
+        geom_histogram(binwidth = 10, fill = "blue", color = "black") 
+    }
+    
+    
+    as.data.frame(rowData(pe[['peptideNorm']])) %>% 
+      select(matches("^perc"))  %>% 
+      ggpairs(
+               upper = list(continuous = wrap("blank")),
+              diag = list(continuous = custom_diag),
+      lower = list(continuous = custom_lower),
+      xlab = "percentage of detection",
+      ylab = "percentage of detection"
+      )
+  
+
+```
+
+## PCA
+
+```{r pca_plot}
+#| results: asis 
+ 
+# to do make in for loop for a set of variable 
+log_info('PCA Analysis...') 
+
+res_pca <- generate_pca_plots(var_topca, pe, params, layer ='peptideNorm' ) 
+if (any (res_pca$status == 1) ){
+  log  (paste('PCA plots :  one splot will be skipped: ', res_pca$msgs[ which(res_pca$status==1)]))
+}
+l_pca <- res_pca$plots 
+ for (pca_plot in l_pca ){
+  if (is.null(pca_plot)){
+    next
+  }
+  print(htmltools::tagList(ggplotly(pca_plot)))
+ }
+
+```
+
+## DE Analysis
+
+Using MSqRob2 with the following formula `r params$formula` with ridge regression disabled
+
+```{r build_model}
+log_info('DE Analysis with Msqrob..')
+
+pe <- msqrob(object = pe, i = "peptideNorm", 
+             formula = as.formula( params$formula)  ,ridge = FALSE, overwrite = TRUE)
+
+
+contrast_list <- paste0(params$comparisons, "=0")
+#coef <-  unique(unlist(strsplit(params$comparisons,' - ',fixed=T)))
+
+
+coef <- rowData(pe[["peptideNorm"]])$msqrobModels[[1]] %>% getCoef %>% names
+
+if (is.null(coef)) {
+         log_info('Inside if coef is null ...')
+          coef <- rowData(pe[["peptideNorm"]])$msqrobModels[[2]] %>% getCoef %>% names
+           #  log_info(getCoef(rowData(pe[['ptmRel']])$msqrobModels[[1]]))
+          getCoef(rowData(pe[['peptideNorm']])$msqrobModels[[2]])
+
+
+    }else{
+      getCoef(rowData(pe[['peptideNorm']])$msqrobModels[[1]])
+
+    }
+
+L <- makeContrast(contrast_list, parameterNames = coef)
+
+
+
+
+#getCoef(rowData(pe[['peptideNorm']])$msqrobModels[[1]])
+
+pe <- hypothesisTest(object = pe, i = "peptideNorm", contrast = L , overwrite=TRUE)
+# save PE obj  
+log_info('Saving pe object (qfeatures) as Rds file.')
+saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experimens.Rds"))
+
+test <-  lapply(params$comparisons, dep_volcano_peptide, data= pe,  p=params )
+
+
+#names(test) <- params$comparisons 
+names(test) <-  params$comparison_label
+
+
+
+if (!dir.exists(file.path(params$folder_prj, "Result","Contrast"))){
+  dir.create(file.path( params$folder_prj, "Result","Contrast"), recursive = TRUE)
+}
+for (a in params$comparison_label){ 
+  log_info(a) 
+  log_info(check_and_substitute_forbidden_chars(a)) 
+  dir.create(file.path(params$folder_prj,"Result","Contrast",check_and_substitute_forbidden_chars(a)), recursive = TRUE,showWarnings = TRUE) 
+} 
+
+
+
+```
+
+## QC plots
+
+::: panel-tabset
+```{r QC_plot}
+#| results: asis
+  for (cmp in names(test)) {
+    cmp_label <- gsub(params$contrast,'',cmp )
+    cat( '##', paste(cmp_label,' P-values distribution ',sep=' '), '\n\n')
+    render_child(data = test[[cmp]],
+                 pe = pe ,
+                 label = cmp,
+                 path= file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)), 
+                 template='_templatePval_distribution.Rmd') 
+    cat('\n\n')
+    
+  }
+
+```
+:::
+
+## Comparison
+
+::: panel-tabset
+```{r comparison}
+#| results: asis
+log_info('Running Analysis for each comparison..')
+  for (cmp in names(test)) {
+    log_info( paste0('  --  ',cmp)) 
+
+    cmp_label <- gsub(params$contrast,'',cmp )
+    cat( '## ', paste(cmp_label,sep=' '), '\n\n')
+    cat ('This volcano plot summarizes the differential expression landscape in the comparison between the two groups \n')
+    
+    render_child(data = test[[cmp]],
+                pe =pe,
+                 label = cmp,
+                 path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
+                 template='_templateContrast_Peptide.Rmd') 
+    cat('\n\n')
+    
+    filt_val <- unlist(str_split(substring(gsub(params$contrast, ' ', (gsub(' - ','',cmp))), 2),' ' ))
+    #print(filt_val) 
+    
+    if ( dim(test[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) ) [1] <= 5   ){
+      cat(' Not Significant proteins to be visualized in in the  heatmap \n')
+    }else{
+  
+       contrast_values_parsed <- parse_comparison(cmp, params$contrast,pe)
+
+       filt_val <- select_samples_comparison(contrast_values_parsed, pe , params$contrast)
+   
+      render_child(data = test[[cmp]], pe = pe
+                 ,sample_rel = filt_val,
+                 label = cmp, 
+                 path= file.path(  params$folder_prj, "Result","Contrast",   check_and_substitute_forbidden_chars(cmp)),
+                 template='_templateHeatmap_Peptide.Rmd')
+    }
+    cat('\n\n')
+    cat('\n\n')
+    cat('\n\n')
+    cat('These bar plots summarizes the number of significantly upregulated/downregulated number of peptide based on different adjusted p-values (selected adjusted p-values are 0.001, 0.01, 0.05, and 0.1 - see facet headers) and log2 fold-change thresholds (on the x-axis) used to define the significance levels.')
+   
+    render_child(data = test[[cmp]],
+                 pe =pe,
+                 label = cmp,
+                 path= file.path( params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
+                 template='_templateBarPlot.Rmd')
+    cat('\n\n')
+    
+    
+  }
+
+```
+:::
+
+## Summary of the DE peptides
+
+In the table you can find a summaries of the number of DE proteins found in all the comparisons. The overlapping of DE proteins among the comparisons is also showed using an upset plot.
+
+```{r upset plot}
+log_info('DE Summaries computation...')
+
+listInput <- list()
+df_summary = as.data.frame(matrix(ncol=3, nrow=0))
+i <- 1 
+for (cmp in names(test)){
+  cmp_label <- gsub(params$contrast,'',cmp )
+  total =  dim(test[[cmp]]$toptable %>% filter(differential_expressed =='UP' |  differential_expressed =='DOWN') )[1]
+  up  = dim(test[[cmp]]$toptable %>% filter(differential_expressed =='UP') )[1]
+  down  =   dim(test[[cmp]]$toptable %>% filter(differential_expressed =='DOWN') )[1]
+  log_info(cmp)
+  log_info(total)
+  #df_summary[[cmp_label]]  <- c(total, up,down)
+  df_summary[i,1]  <- total
+  df_summary[i,2]  <- up
+  df_summary[i,3]  <- down
+
+  if (total >  0){
+    listInput[[cmp_label]] <- test[[cmp]]$toptable %>% filter(differential_expressed =='UP' |  differential_expressed =='DOWN') %>% pull(Protein.Names)
+  }
+  i <- i+1
+}
+rownames(df_summary) <- names(test) 
+colnames(df_summary) <- c('Total DE','Up DE','Down DE')
+    #log_info(df_summary)
+    ## visual table summary
+    DT::datatable( df_summary  ,
+             extensions = c('FixedColumns', 'Scroller'),
+             options = list(fixedColumns = TRUE, scrollY = 400, scrollX = TRUE,
+                            scroller = TRUE, dom = 'Bfrtip', autoWidth = TRUE
+             ),
+     ) %>% formatStyle(
+   columns= c('Total DE','Up DE','Down DE'),
+   textAlign = 'center')
+    
+    # if there's 1 or 2 elements inlistInput and one of them is empty, skip uspset plot
+    #log_info({length(listInput)})
+ if (length(listInput)>=2 ) {
+     print (upset(fromList(listInput), order.by = "freq", nsets = length(listInput) ) )
+     
+      pdf(file= paste0(file.path( params$folder_prj,"Result","Contrast"),'Upset_plot.pdf'),paper="a4")
+       
+     print( upset(fromList(listInput),  nsets = length(listInput) , order.by = "freq",text.scale= 1,
+                  empty.intersections = "on")) 
+     
+     
+      invisible(dev.off())
+      
+      
+ 
+}
+    
+    #upset(fromList(listInput), order.by = "freq")
+     
+# pdf(file= paste0(file.path( params$folder_prj,"Result","Contrast"),'Upset_plot.pdf'),paper="a4")
+# 
+# upset(fromList(listInput),  nsets = 7 , order.by = "freq",text.scale= 1,empty.intersections = "on")
+# invisible(dev.off())
+    
+```
+
+## Session Info
+
+```{r session_info }
+sessionInfo()
+```

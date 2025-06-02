@@ -1,0 +1,39 @@
+
+
+```{r}
+library(dplyr)
+library(heatmaply)
+
+
+log_info('Inside Heatmap Visual for peptides ... ')
+
+
+selected <- data$toptable %>% filter(differential_expressed %in% c('UP','DOWN'))  %>% pull(precursor_id)
+
+
+#app <- as.data.frame(colData(pe)) %>% filter( Group %in% sample_rel)%>%  arrange(Group) %>% dplyr::select(- SampleName)  
+
+data <-  assay(pe[["peptideNorm"]])[selected,sample_rel]
+
+#log_info(dim(data)[1])
+#log_info(dim(data)[2])
+ if (dim(data)[1] > 5 & dim(data)[1] <= 50 ) {
+#     if (dim(data)[1] >= 50 & dim(data)[2] < 25){
+#       w <- 1200
+#       h <- 900 
+#   }else{
+#       w <- 800
+#       h <-  700
+#   }
+    #log_info('Plotting HEatmap')
+    #log_info("{paste(dim(data), collapse = '\n')}")
+    #log_info(file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+    heatmaply::heatmaply(data, scale = "column" , dendrogram =  "none", width = 1200 , height =900 ,   cexRow = 1, cexCol = 0.8 , file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))    
+    
+  } else {
+    cat ('Not enough DE peptides (OR) Too many DE peptides for heatmap visualization')
+}
+
+
+
+```

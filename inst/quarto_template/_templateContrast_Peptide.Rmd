@@ -1,0 +1,101 @@
+
+```{r}
+
+log_info('Inside Contrast Visual for Peptide.... ')
+
+label_work <- gsub('Group','',label)
+  label_work_f <- gsub(' ','_',label_work)
+
+library(plotly)
+ggplotly(data$volcano)
+
+
+#pdf(file= file.path(path,paste0("Volcano",".pdf")), width=10, height=10, res=200, units="in")
+
+pdf(file= file.path(path,paste0("Volcano",".pdf")), height = 15, width = 20)
+
+print(data$volcano2file)
+
+invisible(dev.off())
+
+#cat('Differential Expressed Proteins \n')
+library(DT)
+
+perc_field <- rowData(pe[['peptideNorm']]) %>% colnames() %>%  stringr::str_subset('perc') 
+DT::datatable( data$toptable %>% arrange(adjPval)  ,
+             extensions = c('FixedColumns', 'Scroller'),
+             options = list(fixedColumns = TRUE, scrollY = 600, scrollX = TRUE,
+                            scroller = TRUE, dom = 'Bfrtip', autoWidth = FALSE,
+              columnDefs=list( list(width = '20px', targets = 2), list(width = '20px', targets = 1))
+             ),
+ ) %>% formatStyle(
+   'differential_expressed',
+   target = 'row',
+   textAlign = 'center',
+    backgroundColor =  styleEqual(c('UP', 'DOWN'), c('#7fcdbb', '#fec44f'))) %>%  formatStyle(
+    'Protein.Names',
+    'text-align' = 'left'  
+  )  %>% formatRound(columns=c('logFC'), digits=2) %>%
+  formatSignif(columns = c('pval', 'adjPval'), digits = 2) %>%  formatString(columns=perc_field, suffix='%')
+  
+
+ttable <- data$toptable %>% arrange(adjPval) %>% dplyr::select(- differential_expressed)
+write.csv2(ttable, file= file.path(path,paste0("Toptable",".csv")))
+
+
+UP <- dim(data$toptable %>% filter(differential_expressed == 'UP'))[1]
+DOWN <-  dim(data$toptable %>% filter(differential_expressed == 'DOWN'))[1]
+ 
+if ( UP > 0 | DOWN > 0   ) { 
+  log_info('DE peptides found')
+  cat('Boxplot intensities of the top 10 DE peptides ordered by log2FC')
+    ## peptide
+    d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% arrange(logFC) %>% head(10)%>%   pull(precursor_id)
+    u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% arrange(logFC) %>% head(10) %>%  pull(precursor_id)
+
+     
+   final <- c(d_l,u_l)
+   
+   contrast_values_parsed <- parse_comparison(label, params$contrast, pe)
+     #log_info(contrast_values_parsed$Aleft$Group)
+     #log_info(contrast_values_parsed$Aleft$Timepoint)
+
+     sample_sel <- select_samples_comparison(contrast_values_parsed, pe , params$contrast)
+
+
+     log_info(length(sample_sel))
+   
+    ab <- as.data.frame(assay(pe[["peptideNorm"]])[final,sample_sel])
+   
+   # In case you have more than one variable e.G interaction analysis 
+   # we take the first one.
+   if (length(params$contrast) > 1) {
+        values_2col <- params$contrast[1]
+      }else{
+        values_2col <- params$contrast
+      }
+    
+  ann <-  data$toptable  %>%   filter ( precursor_id  %in% final ) %>% dplyr::select(precursor_id  ,logFC,adjPval) %>%  mutate( Peptide_info=  str_wrap( paste(precursor_id,'\n','LogFC:',round(logFC,2),'adjPval',format(adjPval,scientific= TRUE) ,sep=' '),width= 15)  ) %>% dplyr::select(  -adjPval)
+  
+  
+    ab <-  ab %>% rownames_to_column('Precursor') %>% left_join(ann, join_by(Precursor  == precursor_id)) %>%  gather(Sample, Intensity ,- c(Precursor ,Peptide_info,logFC))  %>% left_join( as.data.frame(colData(pe)), join_by( Sample  == SampleName) )
+    
+   
+     dep_plot_crip <- ab %>%
+  ggplot( aes(x=.data[[values_2col]], y=Intensity, fill=.data[[values_2col]] )) +
+    geom_boxplot() +
+    scale_fill_manual( values= c( "#6d0286", "#35B779FF") ) +
+    geom_jitter(color="black", size=1, alpha=0.8)  +
+     ylab('Peptide Intensity') +
+    facet_wrap( . ~ reorder(Peptide_info, logFC), nrow = 4  )
+
+    print(dep_plot_crip)
+  
+      ggsave(dep_plot_crip , 
+       filename =  file.path(path,paste0('Boxplot_DE_proteins.pdf')),
+       device = "pdf",
+       height = 30, width = 25, units = "cm")
+  
+}
+
+```

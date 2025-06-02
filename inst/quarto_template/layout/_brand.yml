@@ -1,0 +1,23 @@
+color:
+  palette:
+    dark-grey: "#222222"
+    blue: "#1b2944"
+    blue_light: "#4f81bd"
+    grey: "#7c7c7c"
+    white: "#F9F9F9"
+    red: "#f79646"
+    cyan: "#42b6ba"
+    purple: "#5a2a82"  
+  background: white
+  foreground: blue
+  primary: blue_light
+
+logo: 
+  medium:
+    light: vib_cmb_pos.jpg
+    dark: vib_cmb_neg.jpg
+    
+typography:
+  fonts:
+    - family: Open Sans 
+      source: google

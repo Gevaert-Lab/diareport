@@ -1,0 +1,29 @@
+/*-- scss:defaults --*/
+$grey_font:    #7c7c7c  !default;
+$red_theme:      #ff681e  !default;
+$green_theme:    #42b6ba   !default;
+$purple_theme:      #5a2a82   !default;
+$blue_font:   #1b2944  !default;
+$body-color: $blue_font !default;
+$font-size-root: 1.5em !default;
+//$h1-font-size: 2.7rem !default;
+//$h2-font-size: 2.5em !default;
+//$h3-font-size: 2.3rem !default;
+
+$title-block-banner: $purple_theme ;
+// The left hand sidebar
+$grid-sidebar-width: 90px !default;
+
+// The main body
+$grid-body-width: 1200px !default;
+
+// The right hand margin bar
+$grid-margin-width: 250px !default;
+
+// The gutter that appears between the above columns
+$grid-column-gutter-width: 1.2rem !default;
+
+/*-- scss:rules --*/
+ 
+$navbar-dark-hover-color:       rgba($purple_theme, 1) ;
+$navbar-light-hover-color:      rgba($green_theme, .9) ;

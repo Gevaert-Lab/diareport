@@ -1,0 +1,45 @@
+Package: diareport
+Type: Package
+Title: Automated and Customizable Report from DIA-NN output
+Version: 0.99.0
+Authors@R: c(
+    person(
+      "Andrea", "Argentini",
+      email = "andrea.argentini@vib-ugent.be",
+      role = c("aut", "cre")
+    )
+  )
+Description: DiaReporter enables rapid, customizable, and reproducible generation of advanced differential expression (DE) reports for DIA proteomics data based on DIA-NN results. Powered by the MSqRob2 and QFeatures packages, it supports flexible normalization, filtering, and summarization options, allowing users to tailor statistical analysis to their experimental design. Reports are rendered as interactive HTML documents using Quarto templates and include detailed sections on data filtering, confounder analysis, missing value exploration, normalization, PCA, DE analysis, QC plots, and comprehensive summaries. DiaReporter is designed for transparency, customization, and ease of use—making high-quality proteomics reporting accessible with a single command.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    quarto,
+    fs,
+    yaml,
+    assertthat,
+    QFeatures,
+    dplyr,
+    SummarizedExperiment,
+    utils,
+    withr,
+    tidyr,
+    logger,
+    tibble,
+    arrow,
+    scales,
+    stringr,
+    ggplot2,
+    BiocManager,
+    MsCoreUtils,
+    matrixStats,
+    stats,
+    ggrepel,
+    msqrob2,
+    knitr,
+    grDevices,
+    rlang,
+    xfun
+Suggests: 
+    testthat (>= 3.0.0),
+RoxygenNote: 7.3.2
