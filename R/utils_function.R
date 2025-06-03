@@ -473,7 +473,7 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
 
   log_info('Intensity log tranformation')
-
+  if ( ! params$normalization == 'vsn'){
   tryCatch( expr = {
     pe_ <- logTransform(pe_, base = 2, i = "precursor",
                        name = "precursorLog")
@@ -482,6 +482,7 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
     print(paste("Q-feature Log-trasformation:  ",err))
     return( list(error= err, status= 1,q_feat =NULL ))
   } )
+  }
 
   # pe <- logTransform(pe, base = 2, i = "precursor",
   #                    name = "precursorLog")
@@ -490,8 +491,17 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
   log_info('Normalization')
 
   tryCatch( expr = {
-    pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
-                               name = "precursorNorm")
+
+    if  (  params$normalization == 'vsn'){
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
+                       name = "precursorNorm")
+
+    }else{
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+                       name = "precursorNorm")
+    }
+    #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+    #                           name = "precursorNorm")
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -563,6 +573,8 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
     return( list(error= err, status= 1,q_feat =NULL ))
   } )
 
+  if ( ! params$normalization == 'vsn'){
+
   log_info('Intensity log tranformation')
 
   tryCatch( expr = {
@@ -574,13 +586,20 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
     print(paste("Q-feature Log-trasformation:  ",err))
     return( list(error= err, status= 1,q_feat =NULL ))
   } )
-
+  }
 
   log_info('Normalization')
 
+
   tryCatch( expr = {
-    pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
-                                name = "peptideNorm")
+
+    if  (  params$normalization == 'vsn'){
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "PeptideRawSum",
+                                  name = "peptideNorm")
+    }else{
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
+                                  name = "peptideNorm")
+    }
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))

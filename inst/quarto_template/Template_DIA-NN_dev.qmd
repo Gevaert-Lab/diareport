@@ -238,10 +238,18 @@ After all the step, the quantitaive features used in the downstream analysis are
 -   Number of protein identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
 
 ```{r normalization_plot}
-par(mfrow=c(1,3))
+
+if ( 'precursorLog' %in% names(pe)){
+  par(mfrow=c(1,3))
 limma::plotDensities(assay(pe[["precursorLog"]]),legend=FALSE,main='Log-Transform')
 limma::plotDensities(assay(pe[["precursorNorm"]]),legend=FALSE,main='Normalized') 
 limma::plotDensities(assay(pe[["proteinRS"]]),legend=FALSE,main='Protein Summarization' )
+}else{
+   par(mfrow=c(1,2))
+  limma::plotDensities(assay(pe[["precursorNorm"]]),legend=FALSE,main='Normalized') 
+limma::plotDensities(assay(pe[["proteinRS"]]),legend=FALSE,main='Protein Summarization' )
+}
+
 
 ```
 
