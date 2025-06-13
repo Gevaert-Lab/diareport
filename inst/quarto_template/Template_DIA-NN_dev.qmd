@@ -130,7 +130,7 @@ if (!dir.exists(file.path(params$folder_prj))){
  dir.create(file.path( params$folder_prj, "Result"),recursive = TRUE)
 
 
- theme_set(theme_custom_vis(base_size = 15))
+ theme_set(theme_custom_vis(base_size = 18))
  
  st=format(Sys.time(), "%Y%m%d_%H%M")
 

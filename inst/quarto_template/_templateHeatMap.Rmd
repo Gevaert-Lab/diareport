@@ -28,7 +28,7 @@ if (dim(data)[1] > 5) {
   #log_info('Plotting HEatmap')
   #log_info("{paste(dim(data), collapse = '\n')}")
   
-  heatmaply::heatmaply(data, scale = "column" , dendrogram =  "none", width = 1000 , height =900 , file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")),  cexRow = 1 )
+  heatmaply::heatmaply(data, scale = "none" , dendrogram =  "none", width = 1000 , height =900 , file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")),  cexRow = 1 )
     
   #   
   # tmp <- heatmaply::heatmaply(data, scale = "column",  dendrogram = "none",cexRow = 1, file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))

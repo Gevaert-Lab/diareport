@@ -168,7 +168,7 @@ filteringNA_qfeat <- function(pe_ , params, design){
     if (params$filtering_contaminant){
       log_info('Filtering contaminants')
 
-      pe_ <- filterFeatures ( pe_ ,VariableFilter("Protein.Ids", params$contaminat_str, "contains", not=TRUE))
+      pe_ <- filterFeatures ( pe_ ,VariableFilter("Protein.Ids", params$contaminant_str, "contains", not=TRUE))
     }
 
   },error = function(err){
@@ -743,10 +743,10 @@ read_DIANN_report <- function( params ){
 
 
      }
-     # join the  protein description information
-     dfMsqrob<- dfMsqrob %>% mutate(app = sapply(str_split(Protein.Names, ";"), function(x) ifelse(length(x) > 0, x[1], NA))) %>%
-       left_join( prt_desc %>% select(Protein.Name,Description) ,
-                  join_by(app == Protein.Name)) %>%
+     # join the  protein description information use Protein.Ids not Protein.Names
+     dfMsqrob<- dfMsqrob %>% mutate(app = sapply(str_split(Protein.Ids, ";"), function(x) ifelse(length(x) > 0, x[1], NA))) %>%
+       left_join( prt_desc %>% select(Protein.Id,Description) ,
+                  join_by(app == Protein.Id)) %>%
        select(- app) %>% rename( First.Protein.Description =  Description   )
 
      diann_colname <- c("Precursor.Id" , "Modified.Sequence","Stripped.Sequence","Protein.Group",
@@ -756,7 +756,6 @@ read_DIANN_report <- function( params ){
      dfMsqrob <- dfMsqrob %>% select(all_of(diann_colname), everything())
 
    }
-
 
 
 
