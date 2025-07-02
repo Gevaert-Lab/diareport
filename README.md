@@ -8,22 +8,16 @@ The statistical analysis is powered by the **MSqrob2** and **QFeatures** package
 
 ------------------------------------------------------------------------
 
-## 📋 Requirements
-
--   [R](https://www.r-project.org/) (v4.5.0). It may work with older versions but has not been fully tested.
--   [Bioconductor](https://www.bioconductor.org/install/): `install.packages("BiocManager")`
--   Install PhantomJS in your R installation: `webshot::install_phantomjs()`
--   [Quarto](https://quarto.org/docs/download/) for creating HTML reports
-
-------------------------------------------------------------------------
 
 ## 🛠️ Requirements Installation
 
-1.  **Install R and Bioconductor:** `r     install.packages("BiocManager")`
+1.  **Install R  version >= 4.4.0**   
 
-2.  **Install PhantomJS:** `r     webshot::install_phantomjs()`
+2.  **Install Bioconductor:** ` install.packages("BiocManager")`
 
-3.  **Install devtools:** `r     install.packages("devtools")`
+2.  **Install PhantomJS:** ` webshot::install_phantomjs()`
+
+3.  **Install devtools:** `install.packages("devtools")`
 
 4.  **Install Quarto:**
 
@@ -49,10 +43,14 @@ devtools::install_github('Gevaert-Lab/diareport')
 
 ## 📂 Quarto Templates Available
 
-The repository contains two Quarto templates:
+The repository contains four Quarto templates:
 
--   `Template_DIA-NN_dev.qmd`: Template for protein-level analysis reports
--   `Template_DIA-NN_peptide_dev.qmd`: Template for peptide-level analysis reports
+-   `Template_DIA-NN_dev.qmd`: Template for protein-level analysis report
+-   `Template_DIA-NN_dev_A.qmd`: Template for protein-level analysis report including Absent-from-DE analysis
+-   `Template_DIA-NN_peptide_dev.qmd`: Template for peptide-level analysis reports (No PTMs)
+-   `Template_DIA-NN_peptide_dev_A.qmd`: Template for peptide-level analysis reports including Absent-from-DE analysis (No PTMs)
+
+Specify the template name via the `template_file` parameter in the `render_dia_report` function
 
 ------------------------------------------------------------------------
 
@@ -60,7 +58,7 @@ The repository contains two Quarto templates:
 
 1.  Download [DIA_data.zip](https://raw.githubusercontent.com/Gevaert-Lab/DIA-Report/main/example_report/DIA_data.zip), which includes the DIA-NN report and EDF file from [Staes, An, et al.](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00048?ref=PDF).
 2.  Unzip it into a folder called `../path/DIA_data/`.
-3.  Use the following code to run the analysis:
+3.  Use the following code to run the analysis, adjusting the paths accordingly 
 
 **Remark:**  Always use the *full path* to indicate a folder or file.
 

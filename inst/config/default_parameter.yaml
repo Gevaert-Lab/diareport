@@ -30,3 +30,4 @@ params:
   keep_design_order: FALSE
   comparison_label: ""
   qf_obj: ""
+  filt_NaNDE: TRUE

@@ -251,6 +251,87 @@ msqrob_model <- function(pe_, params, layer ){
 
 }
 
+#' @author Andrea Argentini
+#' @title  partial_present
+#' @description
+#' This function perform DE Analysis with the input formula and the comparison of interest
+#' This work only with one VARIABLE Design --> ~ Group
+#' @param pe_ q_feature object where to perfomr DE analsysis
+#' @param params parameters
+#' @param layer name of the layer of the Qfeature obj
+#' @return error: modified q-feature object
+#' @importFrom SummarizedExperiment rowData assay
+#' @importFrom logger log_info
+#' @importFrom dplyr left_join select  filter bind_rows
+
+partially_present <- function( pe_, params , layer ){
+  #  params$comparisons
+
+  tryCatch( expr = {
+
+  if (layer == 'proteinRS'){
+    sele_ <- c('Protein.Group','Protein.Ids','Genes')
+  }else{
+    sele_ <- c( 'Stripped.Sequence', 'Protein.Group','Protein.Ids','Genes')
+  }
+
+  params_C <-gsub("Group", "", params$comparisons)
+  part_list <- list()
+  matrix_list <- list()
+
+  for ( cmp in params_C){
+    log_info(paste0('Computing Partial Analysis for ',cmp))
+    #print(cmp)
+    #cmp <-gsub("Group", "", cmp)
+    contrast_values_parsed <- diareport::parse_comparison(cmp,'Group',pe_)
+    #print(contrast_values_parsed)
+    filt_val <- diareport::select_samples_comparison(contrast_values_parsed, pe_ , 'Group')
+    #print(filt_val)
+    term <- str_split(cmp, " - ")
+    #print(term[[1]])
+    log_info(paste0('SelectingPartial Analysis Hits ',cmp))
+    percterm <- paste0('perc', unlist(term))
+    #print(percterm[[1]])
+    #print( percterm[[2]])
+    log_info(paste(percterm,collapse = ' '))
+    pp_ <-  rowData(pe_[[layer]] )  %>%
+       as.data.frame()   %>%
+       filter(.data[[percterm[[1]]]] > 1 &  .data[[percterm[[2]]]] == 0 ) %>%
+       select ( sele_,.data[[percterm[[1]]]] , .data[[percterm[[2]]]] )
+
+    pp__ <-   rowData(pe_[[layer]] )  %>%
+      as.data.frame()   %>%
+      filter(.data[[percterm[[1]]]] == 0 &  .data[[percterm[[2]]]] > 1 ) %>%
+      select ( sele_,.data[[percterm[[1]]]] , .data[[percterm[[2]]]] )
+
+    final <- dplyr::bind_rows(pp_, pp__)
+    log_info(dim(final)[1])
+    log_info(dim(final)[2])
+
+    if (layer == 'proteinRS'){
+      rownames(final)  <- final$Protein.Ids
+    }else{
+      rownames(final)  <- final$Stripped.Sequence
+    }
+    log_info( paste(filt_val,collapse = ' '))
+    #print(final %>% head())
+    log_info( paste0(rownames(final)[1:10],collapse = ' ' ))
+
+    part_list[[length(part_list) + 1]]  <- final
+    ## only the selected Id.
+    log_info(paste0('Selecting  Partial Analysis Values ',cmp))
+
+    matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val]
+
+  }
+  names(part_list) <-  params_C
+  names(matrix_list) <-  params_C
+  return ( list( error= '', status= 0 , part_item =  part_list , part_value = matrix_list ) )
+  } ,error = function(err){
+    print(paste("Partially Present Analysis :  ",err))
+    return( list(error= err, status= 1,part_item =NULL,part_value= NULL ))
+  } )
+}
 
 
 #' @author Andrea Argentini
@@ -309,10 +390,13 @@ dep_volcano <- function ( label, data  ,params,layer){
 
 
   #all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id))
-
+  if (params$filt_NaNDE == TRUE) {
   log_info(paste0(cmp,' :#by MSqrob: ', dim(all_res)[1]))
   all_res <- all_res[ ! is.na(all_res$adjPval),]
   log_info(paste0(cmp,' :#by MSqrob after p-adj Null filt.: ', dim(all_res)[1]))
+  }else{
+    log_info(paste0(cmp,' :#by MSqrob: ', dim(all_res)[1]))
+  }
 
   all_res$differential_expressed <- "NO"
   all_res$differential_expressed[all_res$logFC >= params$FC_thr & all_res$adjPval < params$adjpval_thr] <- "UP"
@@ -971,7 +1055,7 @@ check_length_design_data  <- function  (data_ , design){
 
   if (length(data_sample) < length(d_sample)){
 
-    error <- 'Number of samples in the design file and in DIA-NN does not match'
+    error <- paste0('Number of samples in the design file and in DIA-NN does not match \n  Samples detected in DIANN :\n',  paste(unlist(data_sample), collapse = "\n")  ,  '\n Samples detected in EDF',paste(unlist(d_sample), collapse = "\n")  , '\n')
     status <- 1
     return(list(status=status,error=error,message=message))
   }

@@ -1,5 +1,5 @@
 ---
-title: "DE Analysis Report (Protein): `r params$title`"
+title: "DE Analysis Report (Peptide): `r params$title`"
 subtitle: "`r params$subtitle`"
 author: "`r params$author`"
 format: 
@@ -50,23 +50,26 @@ params:
   DIANN_ver2: FALSE 
   keep_design_order: FALSE
   comparison_label: ""
-  filt_NaNDE: ""
   qf_obj: ""
   de_obj: ""
+  filt_NaNDE: ""
+  part_item: ""
+  part_value: ""
 ---
 
 ```{r input}
  #| output: false
 #source('utils_function.R')
 
- required_packages = c('QFeatures',"ggrepel","tidyr",
-                       "plotly","DT","MSnbase",'gridExtra','dplyr','stringr' ,"UpSetR",'logger','pander','heatmaply','GGally','yaml')
+ required_packages = required_packages = c('QFeatures',"ggrepel","tidyr",
+                       "plotly","DT","MSnbase",'gridExtra','dplyr','stringr' 
+                       ,"UpSetR",'logger','pander','heatmaply','GGally','yaml')
 # #print(required_packages)
  diareport::check_dependencies(required_packages)
 
 ```
 
-## Experiment Description
+## Experiment Description 
 
 `r params$description`
 
@@ -74,7 +77,7 @@ params:
 # 
 # log_threshold(INFO)
 log_appender(appender_console)
-log_appender(appender_file(file.path( params$folder_prj, "logfile_protein.log")), index = 2)
+log_appender(appender_file(file.path( params$folder_prj, "logfile_peptide.log")), index = 2)
 # formatter_data_frame <- function(df, ...) {
 #      pander::pander_return(df, style = 'simple')
 # }
@@ -143,6 +146,7 @@ write(as.yaml(params), file =  file.path( params$folder_prj, paste0("DIAReport_p
 
 Reading DIA data from **`r basename(params$input_file)`** using *`r params$quantitative_features`* from DIA-NN as quantitative features.
 
+
 `r if (! params$mbr) 'All the precursors with *Global Q-value and Global PG Q-value < 0.01* are used for the analysis' else 'All the precursors with *Lib Q-value and Lib PG Qvalue < 0.01* are used for the analysis'`
 
 ```{r import data}
@@ -151,7 +155,8 @@ Reading DIA data from **`r basename(params$input_file)`** using *`r params$quant
 pe <- readRDS(params$qf_obj )
 
 res_de <- readRDS(params$de_obj )
-
+res_part_item  <-  readRDS(params$part_item )
+res_part_value  <- readRDS(params$part_value )
 
 L <- readLines(params$design_file, n = 1)
 if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
@@ -164,8 +169,8 @@ The filtering steps applied are:
 
 -   Keeping only precursors with more than \>= **`r params$nNonZero`%** of *non missing* values, `r label_filtering`
 -   `r if (params$Proteotypic) 'Selecting only proteotypic peptides' else 'Selecting both not and proteotypic peptides'`
--   Include proteins with at least **`r params$pep_per_prot` peptides**
 -   `r if (params$filtering_contaminant) 'Contaminant proteins are filtered ' else 'Contaminant proteins are not filtered'`
+
 
 ```{r Confanalysis_title, results='asis'}
 
@@ -179,6 +184,7 @@ if ( ! is_empty(params$confounder_list)  )  {
 }
 
 ```
+
 
 ```{r confounder_value_analysis}
 log_info('Confounder Analysis')
@@ -226,69 +232,76 @@ if ( ! is_empty(params$confounder_list) ) {
 
 ```
 
+
 ## Normalization
 
 Normalization of the precursor intensities are:
 
--   Log transformed and then normalized using **`r params$normalization`** approach.
--   Precursors/peptides are summarizated at protein levele using the **`r params$aggr_method`** approach.
+-   Precursor  with the same peptide sequences are **summed** toghether at peptide level  
+-   Peptide intensities are log transformed and then normalized using **`r params$normalization`** approach.
 
 After all the step, the quantitaive features used in the downstream analysis are:
 
--   Number of precursor identified/quantified is : **`{r} dim(assay(pe[['precursor']]))[1]`**
--   Number of protein identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
+- Number of peptide identified/quantified is : **`{r} dim(assay(pe[['peptideNorm']]))[1]`**
 
 ```{r normalization_plot}
 
-if ( 'precursorLog' %in% names(pe)){
-  par(mfrow=c(1,3))
-limma::plotDensities(assay(pe[["precursorLog"]]),legend=FALSE,main='Log-Transform')
-limma::plotDensities(assay(pe[["precursorNorm"]]),legend=FALSE,main='Normalized') 
-limma::plotDensities(assay(pe[["proteinRS"]]),legend=FALSE,main='Protein Summarization' )
+if ( 'peptideLog' %in% names(pe)){
+par(mfrow=c(1,3))
+limma::plotDensities(assay(pe[["PeptideRawSum"]]),legend=FALSE,main='Raw peptide')
+limma::plotDensities(assay(pe[["peptideLog"]]),legend=FALSE,main='Peptide log-tranformed') 
+limma::plotDensities(assay(pe[["peptideNorm"]]),legend=FALSE,main='Peptide Normalized' )
 }else{
-   par(mfrow=c(1,2))
-  limma::plotDensities(assay(pe[["precursorNorm"]]),legend=FALSE,main='Normalized') 
-limma::plotDensities(assay(pe[["proteinRS"]]),legend=FALSE,main='Protein Summarization' )
+  par(mfrow=c(1,2))
+ limma::plotDensities(assay(pe[["PeptideRawSum"]]),legend=FALSE,main='Raw peptide')
+limma::plotDensities(assay(pe[["peptideNorm"]]),legend=FALSE,main='Peptide Normalized' ) 
 }
 
 
+
 ```
+
 
 ## Data Missing Analysis
 
 The plot shows the completeness of the experiments at precursor and summarized level. On the the x-axis peptides/proteins are ordered based on the increasing NA content.
 
-
 ```{r missing_val_analysis}
 
-
 pdf(NULL) 
-  peptidemissingness <- MSnbase::plotNA(assay(pe[["precursorNorm"]]))
+  peptidemissingness <- MSnbase::plotNA(assay(pe[["peptideNorm"]]))
 invisible(dev.off())
 
-peptidemissingness <-  peptidemissingness + 
-                         xlab("Precursor index (ordered by data completeness)") +
-                           ggtitle("Missingness - Precursor level" )
+peptidemissingness <-  peptidemissingness + xlab("Peptide index (ordered by data completeness)") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  theme(strip.text.x = element_blank(),
+        strip.background = element_rect(colour="white", fill="white"),
+        legend.position=c(.35,.15)
+  ) +   ggtitle("Missingness - Peptide level" )
 
 peptidemissingness
 
 
-pdf(NULL) 
-  proteinmissingness <- MSnbase::plotNA(assay(pe[["proteinRS"]]))
-invisible(dev.off())
-#proteinmissingness <- MSnbase::plotNA(assay(pe[["proteinRS"]])) 
+```
 
-proteinmissingness <- proteinmissingness +
-     xlab("Protein index (ordered by data completeness)") +
-     ggtitle("Missingness - Protein Level")
+In the following table, percentage and total number of missing protein value are showed for all the samples.  
 
-proteinmissingness
+```{r %_miss_sample}
+DT::datatable( as.data.frame(nNA(pe[["peptideNorm"]])$nNAcols) %>% rename(  Sample_Name = name ) %>% arrange(desc(pNA))  ,
+              extensions = c('FixedColumns', 'Scroller'),
+              options = list(fixedColumns = TRUE, scrollY = 400, scrollX = TRUE,
+                             scroller = TRUE, dom = 'Bfrtip',
+                             autoWidth = TRUE
+                             ),
+              )
 
 ```
 
-## Completeness Analysis
 
-This section analyzes the completeness of protein readouts across all samples within each group. For each quantified protein, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
+## Completeness Analysis 
+
+This section analyzes the completeness of peptide readouts across all samples within each group. For each quantified peptide, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
 
 ```{r completeness_analysis}
 log_info('Completness Analysis...')
@@ -326,7 +339,7 @@ log_info('Completness Analysis...')
     }
     
     
-    as.data.frame(rowData(pe[['proteinRS']])) %>% 
+    as.data.frame(rowData(pe[['peptideNorm']])) %>% 
       select(matches("^perc"))  %>% 
       ggpairs(
                upper = list(continuous = wrap("blank")),
@@ -335,8 +348,6 @@ log_info('Completness Analysis...')
       xlab = "percentage of detection",
       ylab = "percentage of detection"
       )
-  
-
 ```
 
 ## PCA
@@ -347,7 +358,7 @@ log_info('Completness Analysis...')
 # to do make in for loop for a set of variable
 log_info('PCA Analysis...')
 
-res_pca  <- diareport::generate_pca_plots( pe, params, layer ='proteinRS' )
+res_pca  <- diareport::generate_pca_plots( pe, params, layer ='peptideNorm' )
 
 if (any (res_pca$status == 1) ){
   log_info(paste('PCA plots :  one plot will be skipped: ', res_pca$msgs[ which(res_pca$status==1)]))
@@ -363,6 +374,7 @@ htmltools::tagList(plotly_list)
 
 ```
 
+
 ## DE Analysis
 
 Using MSqRob2 with the following formula `r params$formula` with ridge regression disabled
@@ -377,10 +389,9 @@ for (a in   params$comparison_label ){
   log_info(a)
   log_info(check_and_substitute_forbidden_chars(a))
   dir.create(file.path(params$folder_prj,"Result","Contrast",check_and_substitute_forbidden_chars(a)), recursive = TRUE,showWarnings = TRUE)
-}  
+}
 log_info('Saving pe object (qfeatures) as Rds file.')
 saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"))  
-
 ```
 
 ## QC plots
@@ -404,6 +415,8 @@ saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"
 ```
 :::
 
+
+
 ## Comparison
 
 ::: panel-tabset
@@ -424,16 +437,17 @@ log_info('Running Analysis for each comparison..')
                  pe =pe,
                  label = cmp , 
                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
-                 template='_templateContrast.Rmd') 
+                 template='_templateContrast_Peptide.Rmd') 
     cat('\n\n')
     
    
 
     if ( dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1] <= 5 || dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1]  >=  50     ){
-      cat(' Not enough DE proteins (< 5) or too many DE proteins for heatmap visualization \n')
+      cat(' Not enough DE peptides (< 5) or too many DE peptides for heatmap visualization \n')
     }else{
       
-  
+    #filt_val <- unlist(str_split(substring(gsub(params$contrast, ' ', (gsub(' - ','',cmp))), 2),' ' ))
+    #print(filt_val)
     
     contrast_values_parsed <- diareport::parse_comparison(cmp, params$contrast,pe)
 
@@ -444,8 +458,33 @@ log_info('Running Analysis for each comparison..')
                    sample_rel = filt_val,
                  label = cmp,
                  path= file.path(  params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
-                 template='_templateHeatMap.Rmd')
+                 template='_templateHeatmap_Peptide.Rmd')
     }
+    cat('\n\n')
+    cat('\n\n')
+    cat('###','Absent-from-DE Analysis')
+    cat('\n\n')
+    cat ('All proteins that are either uniquely present or absent in one of the two groups, and are not included in the differential expression (DE) results, are listed below. A heatmap displayed above the table illustrates the peptides intensities across all replicates for the two groups of interest. \n')
+    ### partial analysis result visualition   
+    
+      if (dim( res_part_item[[cmp]])[1]==0){
+       cat('\n\n')
+  cat('No peptides present.')
+   cat('\n\n')
+      }else{
+         diareport::render_child(data = res_part_item[[cmp]],
+                  pe =pe,
+                  label = cmp , 
+                  sample_rel = res_part_value[[cmp]] ,
+                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
+                  template='_templatePartialResult.Rmd') 
+          cat('\n\n')
+          cat('\n\n')
+      }
+    # reas_part_item  <-  readRDS(params$part_item )
+    #res_part_value  <- readRDS(params$part_value )
+   
+
     cat('\n\n')
     cat('\n\n')
     cat('\n\n')
@@ -463,6 +502,8 @@ log_info('Running Analysis for each comparison..')
 
 ```
 :::
+
+
 
 ## Summary of the DE proteins
 
@@ -502,8 +543,9 @@ colnames(df_summary) <- c('Total DE','Up DE','Down DE')
    columns= c('Total DE','Up DE','Down DE'),
    textAlign = 'center')
     # if there's 1 or 2 elements inlistInput and one of them is empty, skip uspset plot
+    #log_info({length(listInput)})
  if (length(listInput)>=2 ) {
-    
+    #heuristic_interaction <- round(mean(sapply(p, length)) /2 )
     print (upset(fromList(listInput), order.by = "freq", nsets = length(listInput) ) )
      
       pdf(file= paste0(file.path( params$folder_prj,"Result","Contrast"),'Upset_plot.pdf'),paper="a4")
@@ -525,3 +567,5 @@ colnames(df_summary) <- c('Total DE','Up DE','Down DE')
 ```{r session_info }
 sessionInfo()
 ```
+
+

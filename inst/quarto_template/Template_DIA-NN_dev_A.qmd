@@ -50,9 +50,11 @@ params:
   DIANN_ver2: FALSE 
   keep_design_order: FALSE
   comparison_label: ""
-  filt_NaNDE: ""
   qf_obj: ""
   de_obj: ""
+  filt_NaNDE: ""
+  part_item: ""
+  part_value: ""
 ---
 
 ```{r input}
@@ -151,7 +153,8 @@ Reading DIA data from **`r basename(params$input_file)`** using *`r params$quant
 pe <- readRDS(params$qf_obj )
 
 res_de <- readRDS(params$de_obj )
-
+res_part_item  <-  readRDS(params$part_item )
+res_part_value  <- readRDS(params$part_value )
 
 L <- readLines(params$design_file, n = 1)
 if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
@@ -285,6 +288,21 @@ proteinmissingness <- proteinmissingness +
 proteinmissingness
 
 ```
+
+In the following table, percentage and total number of missing protein value are showed for all the samples.  
+
+```{r %_miss_sample}
+
+DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample_Name = name) %>% arrange(desc(pNA))  ,
+              extensions = c('FixedColumns', 'Scroller'),
+              options = list(fixedColumns = TRUE, scrollY = 400, scrollX = TRUE,
+                             scroller = TRUE, dom = 'Bfrtip',
+                             autoWidth = TRUE
+                             ),
+              )
+
+```
+
 
 ## Completeness Analysis
 
@@ -433,8 +451,6 @@ log_info('Running Analysis for each comparison..')
       cat(' Not enough DE proteins (< 5) or too many DE proteins for heatmap visualization \n')
     }else{
       
-  
-    
     contrast_values_parsed <- diareport::parse_comparison(cmp, params$contrast,pe)
 
     filt_val <- diareport::select_samples_comparison(contrast_values_parsed, pe , params$contrast)
@@ -447,6 +463,27 @@ log_info('Running Analysis for each comparison..')
                  template='_templateHeatMap.Rmd')
     }
     cat('\n\n')
+    cat('\n\n')
+    cat('###','Absent-from-DE Analysis')
+    cat('\n\n')
+    cat ('All proteins that are either uniquely present or absent in one of the two groups, and are not included in the differential expression (DE) results, are listed below. A heatmap displayed above the table illustrates the protein intensities across all replicates for the two groups of interest. \n')
+    ### partial analysis result visualition   
+    if (dim( res_part_item[[cmp]])[1]==0){
+       cat('\n\n')
+  cat('No proteins present.')
+   cat('\n\n')
+      }else{
+    # reas_part_item  <-  readRDS(params$part_item )
+    #res_part_value  <- readRDS(params$part_value )
+    diareport::render_child(data = res_part_item[[cmp]],
+                  pe =pe,
+                  label = cmp , 
+                  sample_rel = res_part_value[[cmp]] ,
+                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
+                  template='_templatePartialResult.Rmd') 
+     cat('\n\n')
+    cat('\n\n')
+    }
     cat('\n\n')
     cat('\n\n')
     cat('These bar plots summarizes the number of significantly upregulated/downregulated number of proteins based on different adjusted p-values (selected adjusted p-values are 0.001, 0.01, 0.05, and 0.1 - see facet headers) and log2 fold-change thresholds (on the x-axis) used to define the significance levels.')

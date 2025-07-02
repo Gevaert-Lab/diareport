@@ -164,6 +164,26 @@ step_msqrob_de <- function(input) {
   input
 }
 
+#' @author Andrea Argentini
+#' @title  step_partial_result
+#'
+#' @description
+#' Step function for pariati data
+#'
+#' @param input A list containing pe and params_report.
+#' @return The updated input list with de_comparison and updated pe.
+step_partial_result <- function(input) {
+  print(input$layer)
+  res <- partially_present(input$pe, input$params_report,input$layer )
+  if (res$status == 0) {
+    input$part_item <- res$part_item
+    input$part_value <- res$part_value
+  } else {
+    stop(res$error)
+  }
+  input
+}
+
 
 #' @author Andrea Argentini
 #' @title  run_workflow_pipeline

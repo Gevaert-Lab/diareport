@@ -1,0 +1,49 @@
+
+
+```{r}
+library(dplyr)
+library(heatmaply)
+
+
+log_info('Inside Partial visualization ...')
+
+ part_table <- data
+
+part_int <- sample_rel
+
+
+perc_field <- part_table %>% colnames() %>%  stringr::str_subset('perc') 
+DT::datatable(part_table  ,
+               rownames = FALSE, 
+             extensions = c('FixedColumns', 'Scroller'),
+             options = list(fixedColumns = TRUE, scrollY = 600, scrollX = TRUE,
+                            scroller = TRUE, dom = 'Bfrtip', autoWidth = FALSE,
+              columnDefs=list( list(width = '20px', targets = 2), list(width = '20px', targets = 1))
+             ),
+ )  %>%  formatStyle(
+    'Protein.Group',
+    'text-align' = 'left'  
+  )   %>%  formatString(columns=perc_field, suffix='%')
+
+write.csv2(part_table, file= file.path(path,paste0("Exclusive_protein_notinDE",".csv")))
+
+
+    #log_info('Plotting HEatmap')
+    #log_info("{paste(dim(data), collapse = '\n')}")
+    #log_info(file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+if (dim(part_int)[1] < 50 ){
+     log_info(paste(dim(part_int),collapse = ' ' ))
+    heatmaply::heatmaply(part_int, scale = "none" , dendrogram =  "none", width = 1200 , height =900 ,   cexRow = 1, cexCol = 0.8 , file =  file.path(path,paste0("TEST_",".pdf")))   
+    }else{
+    cat ('Too many peptide / proteins for heatmap visualization')
+}
+
+ 
+    
+#   } else {
+#     cat ('Not enough DE peptides (OR) Too many DE peptides for heatmap visualization')
+# }
+
+
+
+```
