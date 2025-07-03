@@ -91,6 +91,113 @@ add_ensembl_annotation  <-function (pe_, params ) {
 
 
 #' @author Andrea Argentini
+#' @title  filteringNA_qfeat_ev
+#' @description
+#' This function adds number and percentage of non missing value for each group in assay specified.
+#' Moreover it adds computed the number of peptide per protein and the total number of non missing values.
+#'
+#' @param pe_ q_feature object
+#' @param params EDF data frame
+#' @param design EDF data frame
+#' @return status: int 0 non error  / 1 error found
+#' @return q_feat: q-feature created/ modified
+#' @return error: error message
+#' @importFrom SummarizedExperiment colData
+#' @importFrom logger log_info
+#' @importFrom  stats as.formula
+#' @importFrom QFeatures filterFeatures VariableFilter addAssay
+#'
+filteringNA_qfeat_ev <- function(pe_ , params, design){
+  group_val <- design %>% distinct(Group) %>%
+    arrange(Group) %>%  pull()
+  error <- ''
+  status <- 0
+  size <- dim(colData(pe_))[1]
+
+  ## ducplicate precursor layer
+  temp_l <- pe_[["precursor"]]
+  pe_ <- QFeatures::addAssay(pe_, temp_l, name = "precursor_")
+
+
+  tryCatch( expr = {
+
+    if (params$filtPerGroup != '') {
+      log_info('filtering per group')
+
+      ## or
+      if (params$filtPerGroup == 'at_least_one') {
+        log_info('filtering per group criteria: in at least one group ')
+        perc_group_val <- paste0("perc", group_val)
+        formula_condition <- paste(paste0(perc_group_val, " >= ", params$nNonZero), collapse = " | ")
+        dynamic_formula <- as.formula(paste0("~ ", formula_condition))
+      }
+      # and
+      if (params$filtPerGroup == 'all') {
+        log_info('filtering per group criteria: for all the groups ')
+        perc_group_val <- paste0("perc", group_val)
+        formula_condition <- paste(paste0(perc_group_val, " >= ", params$nNonZero), collapse = " & ")
+        dynamic_formula <- as.formula(paste0("~ ", formula_condition))
+      }
+
+      pe_ <-  filterFeatures(pe_,dynamic_formula)
+
+    }else{
+      log_info('filtering across all samples')
+      formula <- as.formula( paste0("~ nNonZero >= ", round(size  * ( params$nNonZero / 100))) )
+      pe_ <- filterFeatures(pe_, formula)
+      #pe_ <- filterFeatures(pe_, ~ nNonZero >= round(size  * ( params$nNonZero / 100))   )
+
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Filtering NaN :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  tryCatch( expr = {
+    if (params$Proteotypic){
+      log_info('Proteotypic filtering')
+      formula <- as.formula( paste0("~ Proteotypic == 1") )
+      pe_ <- filterFeatures(pe_, formula )
+      #pe_ <- filterFeatures(pe_, ~ Proteotypic == 1)
+
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Protetypic :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+
+  tryCatch( expr = {
+    if (params$filtering_contaminant){
+      log_info('Filtering contaminants')
+
+      pe_ <- filterFeatures ( pe_ , i ='precursor' ,VariableFilter("Protein.Names", params$contaminant_str, "contains", not=TRUE))
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Contaminant :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  })
+
+  tryCatch( expr = {
+
+    log_info('Filtering only n peptides per protein')
+    formula <- as.formula( paste0("~   pep_per_prot >= ", params$pep_per_prot) )
+    pe_ <- filterFeatures(pe_, formula )
+
+  },error = function(err){
+    print(paste("Q-feature Num peptide Protein :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  })
+
+
+  return( list(error= '', status= 0,q_feat = pe_ ))
+}
+
+
+#' @author Andrea Argentini
 #' @title  filteringNA_qfeat_protein
 #' @description
 #' This function adds number and percentage of non missing value for each group in assay specified.
@@ -532,6 +639,102 @@ add_rowdata_detection <- function ( pe_ , design , assay ){
 
 
 
+#' @author Andrea Argentini
+#' @title  processing_qfeat_protein_ev
+#'
+#' @description
+#' This function applies the following steps from precursor assays:
+#' 1. Log2 transformation of the percursor intensities (assay name: precursorLog)
+#' 2. Normalization of log2transformed intensities based on params$normalization method (assay name: precursorNorm).
+#' 3. Protein summarization based on  aggr_method_f method (assay name: proteinRS)
+#' In case of EV, we replciate the previous step also in the *_ layer, where Bovine protein are not filtered
+#'
+#' @param pe_ q_feature object where to add rowdata
+#' @param params EDF data frame
+#' @param aggr_mth_fun function for protein summarization
+#' @return status int 0 non error  / 1 error found
+#' @return q_feat q-feature created / modified
+#' @return error error message
+#' @importFrom QFeatures logTransform normalize aggregateFeatures
+#' @importFrom logger log_info
+
+processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
+  error <- ''
+  status <- 0
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  log_info('Intensity log tranformation')
+  if ( ! params$normalization == 'vsn'){
+    tryCatch( expr = {
+      pe_ <- logTransform(pe_, base = 2, i = "precursor",
+                          name = "precursorLog")
+      pe_ <- logTransform(pe_, base = 2, i = "precursor_",
+                          name = "precursorLog_")
+
+    },error = function(err){
+      print(paste("Q-feature Log-trasformation:  ",err))
+      return( list(error= err, status= 1,q_feat =NULL ))
+    } )
+  }
+
+  # pe <- logTransform(pe, base = 2, i = "precursor",
+  #                    name = "precursorLog")
+
+
+  log_info('Normalization')
+
+  tryCatch( expr = {
+
+    if  (  params$normalization == 'vsn'){
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
+                       name = "precursorNorm")
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor_",
+                       name = "precursorNorm_")
+
+    }else{
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+                       name = "precursorNorm")
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog_",
+                       name = "precursorNorm_")
+    }
+    #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+    #                           name = "precursorNorm")
+
+  },error = function(err){
+    print(paste("Q-feature Normalization:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  #MsCoreUtils::medianPolish()
+  log_info('Summarization at protein level')
+
+  tryCatch( expr = {
+    pe_ <- aggregateFeatures(pe_, i = "precursorNorm",
+                             fcol = "Protein.Ids",
+                             name = "proteinRS",
+                             fun = aggr_mth_fun,
+                             na.rm = TRUE)
+    pe_ <- aggregateFeatures(pe_, i = "precursorNorm_",
+                             fcol = "Protein.Ids",
+                             name = "proteinRS_",
+                             fun = aggr_mth_fun,
+                             na.rm = TRUE)
+
+  },error = function(err){
+    print(paste("Q-feature Summarization:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+
+
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  return( list(error= '', status= 0, q_feat = pe_ ))
+
+}
+
+
+
 
 #' @author Andrea Argentini
 #' @title  processing_qfeat_protein
@@ -898,7 +1101,7 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
   result_check <- check_columns_presence (design, min_features =  min_col_need_design )
 
   if (result_check$status == 1) {
-    msg <- paste('Design file not recognized. It should contains at least the following columns:',min_col_need_design,sep='\n' )
+    msg <- paste('Design file not recognized. It should contains at least the following columns:', paste(min_col_need_design, collapse = ' '),sep='\n' )
     return( list(error= msg, status= result_check$status, q_feat =NULL ))
   }
 
