@@ -668,8 +668,6 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
     tryCatch( expr = {
       pe_ <- logTransform(pe_, base = 2, i = "precursor",
                           name = "precursorLog")
-      pe_ <- logTransform(pe_, base = 2, i = "precursor_",
-                          name = "precursorLog_")
 
     },error = function(err){
       print(paste("Q-feature Log-trasformation:  ",err))
@@ -688,14 +686,10 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
     if  (  params$normalization == 'vsn'){
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
                        name = "precursorNorm")
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor_",
-                       name = "precursorNorm_")
 
     }else{
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
                        name = "precursorNorm")
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog_",
-                       name = "precursorNorm_")
     }
     #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
     #                           name = "precursorNorm")
@@ -712,11 +706,6 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
     pe_ <- aggregateFeatures(pe_, i = "precursorNorm",
                              fcol = "Protein.Ids",
                              name = "proteinRS",
-                             fun = aggr_mth_fun,
-                             na.rm = TRUE)
-    pe_ <- aggregateFeatures(pe_, i = "precursorNorm_",
-                             fcol = "Protein.Ids",
-                             name = "proteinRS_",
                              fun = aggr_mth_fun,
                              na.rm = TRUE)
 

@@ -10,7 +10,7 @@ format:
     toc-title: 'DE Analysis'
     title-block-banner: '#1b2944'
     title-block-banner-color: '#f79646'
-
+    lightbox: auto
 execute: 
   echo: false
   warning: false
@@ -61,7 +61,7 @@ params:
  #| output: false
 #source('utils_function.R')
 
- required_packages = c('QFeatures',"ggrepel","tidyr",
+ required_packages = c('QFeatures',"ggrepel","tidyr","tibble",
                        "plotly","DT","MSnbase",'gridExtra','dplyr','stringr' ,"UpSetR",'logger','pander','heatmaply','GGally','yaml')
 # #print(required_packages)
  diareport::check_dependencies(required_packages)
@@ -183,6 +183,9 @@ if ( ! is_empty(params$confounder_list)  )  {
 ```
 
 ```{r confounder_value_analysis}
+#| layout-ncol: 2
+#| layout-nrow: 2
+#| lightbox: true
 log_info('Confounder Analysis')
 cData<-as.data.frame(colData(pe))
 list_numeric <- list()
@@ -228,27 +231,30 @@ if ( ! is_empty(params$confounder_list) ) {
 
 ```
 
-##  Contaminant Analysis 
+## Contaminant Analysis
 
 ```{r contaminat_visual}
+#| layout-ncol: 2
+#| layout-nrow: 1
+#| lightbox: true
 
-df <- rowData(pe[['proteinRS_']]) %>% as.data.frame() %>% select( Protein.Ids, Protein.Names)
-df <- df %>% mutate( type =sapply(
-        str_split(Protein.Names, "_"), 
-        function(x) {
-          # Take the second part, split by semicolon if present
-          second_part <- x[2]
-          if (is.na(second_part)) return(NA)
-          # If there's a semicolon, split and check for BOVIN
-          splitted <- unlist(str_split(second_part, ";"))
-          if ("BOVIN" %in% splitted) {
-            return("BOVIN")
-          } else { 
-            return("HUMAN")
-          }
-        }
-    ))
-count_prot <- df %>% dplyr::count(type)
+# df <- rowData(pe[['proteinRS_']]) %>% as.data.frame() %>% select( Protein.Ids, Protein.Names)
+# df <- df %>% mutate( type =sapply(
+#         str_split(Protein.Names, "_"), 
+#         function(x) {
+#           # Take the second part, split by semicolon if present
+#           second_part <- x[2]
+#           if (is.na(second_part)) return(NA)
+#           # If there's a semicolon, split and check for BOVIN
+#           splitted <- unlist(str_split(second_part, ";"))
+#           if ("BOVIN" %in% splitted) {
+#             return("BOVIN")
+#           } else { 
+#             return("HUMAN")
+#           }
+#         }
+#     ))
+# count_prot <- df %>% dplyr::count(type)
 
 
 df <- rowData(pe[['precursor_']]) %>% as.data.frame() %>% select( Protein.Ids, Protein.Names)
@@ -299,11 +305,11 @@ count_precursor <- df %>% dplyr::count(type)
  log_info(paste( dim(d), collapse = ' '))
  d_visual <- d %>% tidyr::gather( Contaminant , percentage ,- Sample)
 
-cont_proteinID <- ggplot(count_prot, aes(x = "", y = n, fill = type)) +
-  geom_bar(stat = "identity") +
-  labs(y = "# Protein", x = "", fill = "Type") 
-
-print(cont_proteinID)
+# cont_proteinID <- ggplot(count_prot, aes(x = "", y = n, fill = type)) +
+#   geom_bar(stat = "identity") +
+#   labs(y = "# Protein", x = "", fill = "Type") 
+# 
+# print(cont_proteinID)
 
 cont_precursor <- ggplot(count_precursor, aes(x = "", y = n, fill = type)) +
   geom_bar(stat = "identity") +
@@ -315,9 +321,11 @@ plot_perc <- ggplot( d_visual, aes(x= Sample, y = percentage ,fill = Contaminant
   geom_col(position = "stack") +
    scale_x_discrete(guide = guide_axis(angle = 90) )  + ylab("percentage of precursors") 
 
+ggsave(file.path(params$folder_prj,"Result","EV_contaminant_percentage_precursor_intensity.pdf"), 
+       plot = plot_perc, width = 8.27, height = 11.69, units = "in")
+
 print(plot_perc)
 ```
-
 
 ## Normalization
 
@@ -332,7 +340,7 @@ After all the step, the quantitaive features used in the downstream analysis are
 -   Number of protein identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
 
 ```{r normalization_plot}
-
+#| lightbox: false
 if ( 'precursorLog' %in% names(pe)){
   par(mfrow=c(1,3))
 limma::plotDensities(assay(pe[["precursorLog"]]),legend=FALSE,main='Log-Transform')
@@ -351,8 +359,10 @@ limma::plotDensities(assay(pe[["proteinRS"]]),legend=FALSE,main='Protein Summari
 
 The plot shows the completeness of the experiments at precursor and summarized level. On the the x-axis peptides/proteins are ordered based on the increasing NA content.
 
-
 ```{r missing_val_analysis}
+#| layout-ncol: 2
+#| layout-nrow: 1
+#| lightbox: true
 
 
 pdf(NULL) 
@@ -379,7 +389,7 @@ proteinmissingness
 
 ```
 
-In the following table, percentage and total number of missing protein value are showed for all the samples.  
+In the following table, percentage and total number of missing protein value are showed for all the samples.
 
 ```{r %_miss_sample}
 
@@ -393,12 +403,13 @@ DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample
 
 ```
 
-
 ## Completeness Analysis
 
 This section analyzes the completeness of protein readouts across all samples within each group. For each quantified protein, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
 
 ```{r completeness_analysis}
+#| lightbox: false
+
 log_info('Completness Analysis...')
    custom_lower <- function(data, mapping, ...) {
     
@@ -471,23 +482,88 @@ htmltools::tagList(plotly_list)
 
 ```
 
-## Protein Marker
+## EV Protein Marker
+
+In this section, the protein intensities of 8 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1, GAG-EGFP) are summarized for all groups. The large dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$.
 
 ```{r protein_marker}
 
 marker <- read.csv('ev_marker.tsv', sep=';')	
 
-assay(pe[['proteinRS']])[marker$Accession  , ]
 
-
-assay(pe[['proteinRS']])[marker$Accession  , ] %>% as.data.frame() 
-%>% rownames_to_column('protein') %>% tidyr::gather( Sample , summarize_intensities ,- protein) %>%   
+f <- assay(pe[['proteinRS']])[marker$Accession  , ] %>% as.data.frame() %>% 
+  tibble::rownames_to_column('protein') %>% 
+  left_join( marker %>% select(Accession, Gene) , join_by(protein == Accession )) %>% 
+  tidyr::gather( Sample , summarize_intensities ,- Gene, -protein) %>%   
   left_join( colData(pe) %>%  as.data.frame() %>% select(SampleName , Group), join_by(Sample == SampleName ))
 
-## be fixed
- ggplot(f, aes(x=Group, y=summarize_intensities, group=protein , color=protein )) + 
-geom_pointrange(aes(ymin=summarize_intensities-sd, ymax=summarize_intensities+sd))
+ p_m <- ggplot(f, aes(x = Group, y = summarize_intensities, color = Gene, group = Gene)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.15), alpha = 0.3, size = 2) +
+  stat_summary(
+    fun = mean,
+    fun.min = function(x) mean(x) - sd(x),
+    fun.max = function(x) mean(x) + sd(x),
+    geom = "pointrange",
+    position = position_dodge(width = 0.1),
+     size = 1
+  ) 
 
+ggplotly(p_m)  
+  
+ggsave(file.path(params$folder_prj,"Result","EV_marker.pdf"), 
+       plot = p_m, width = 10.27, height = 11.69, units = "in")
+
+```
+
+## Type of Protein
+
+Using an internal annotation database (*ProteinAnnotationsShotList_0.9*), proteins are annotated as intracellular, secreted, transmembrane or other. The number of identified proteins in each category is color-coded by the experimental group.
+
+```{r count_annotation }
+#| lightbox: true
+
+ann <- read.csv('ProteinAnnotationsShotList.txt', sep='\t')
+
+ type_names <- c('TM.protein','Intracellular','Secreted','Other','GAG-EGFP')
+  
+  # Create a named list of Precursor.Id vectors, one per tissue
+  proteinID_lists <- lapply(type_names, function(type) {
+    ex <- ann %>% filter(Subcellular.Location == type ) %>% pull(Entry)
+    ex[ex  %in% rownames(assay(pe[['proteinRS']]))]
+
+  })
+  
+  names(proteinID_lists) <- type_names  
+  #total_ammount <- assay(pe[['precursor_']]) %>% base::colSums(na.rm = TRUE)
+  
+  d <- data.frame(
+  Sample = colData(pe)$SampleName)
+ 
+  for (a in names(proteinID_lists)){
+       d[a] <- colSums(!is.na(assay(pe[['proteinRS']])[proteinID_lists[[a]], , drop = FALSE] ))
+
+  }
+  
+ d <- d %>% left_join(colData(pe)%>% as.data.frame() %>% select(SampleName, Group), join_by( Sample == SampleName) )
+ d_count <- d %>% tidyr::gather( Type , N_protein ,- Sample, -Group)
+    
+ d_sum <- d_count %>%
+  group_by(Group, Type) %>%
+  summarize(total_proteins = sum(N_protein), .groups = "drop")
+    
+# p_ann <-ggplot(d_sum, aes(x = Group, y = total_proteins, fill = Type)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Group", y = "Number of Proteins", fill = "Protein Type")
+# print(p_ann) 
+
+p_ann_ <-ggplot(d_sum, aes(x = Type, y = total_proteins, fill = Group)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Type", y = "Number of Proteins", fill = "Group")
+
+print(p_ann_) 
+
+ggsave(file.path(params$folder_prj,"Result","EV_protein_annotated_counts.pdf"), 
+       plot = p_ann_, width = 8.27, height = 11.69, units = "in")
 
 ```
 
@@ -616,6 +692,8 @@ log_info('Running Analysis for each comparison..')
 In the table you can find a summaries of the number of DE proteins found in all the comparisons. The overlapping of DE proteins among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
+#| lightbox: true
+
 log_info('DE Summary computation...')
 listInput <- list()
 df_summary = as.data.frame(matrix(ncol=3, nrow=0))
