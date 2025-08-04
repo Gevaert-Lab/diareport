@@ -416,7 +416,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
       step_processing_protein_ev,
       step_add_rowdata_protein,
       step_add_ensembl,
-      step_msqrob_de,
+      step_msqrob_de_ev,
       step_partial_result
     )
     initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f,layer='proteinRS')

@@ -312,7 +312,7 @@ filteringNA_qfeat <- function(pe_ , params, design){
 #' @importFrom msqrob2 msqrob getCoef makeContrast hypothesisTest
 #' @importFrom dplyr left_join select group_by summarise distinct n
 
-msqrob_model <- function(pe_, params, layer ){
+msqrob_model <- function(pe_, params, layer, ev_ann  ){
 
 
   tryCatch( expr = {
@@ -343,7 +343,13 @@ msqrob_model <- function(pe_, params, layer ){
     L <- makeContrast(contrast_list, parameterNames = coef)
     pe_ <- hypothesisTest(object = pe_, i = layer, contrast = L , overwrite=TRUE)
 
-    res_DE <-  lapply(params$comparisons, dep_volcano, data= pe_,  p=params , layer= layer )
+
+    res_DE <-  lapply(params$comparisons, dep_volcano,
+                        data= pe_,
+                        p=params ,
+                        layer= layer,
+                        annotation_ev = ev_ann )
+
 
     # params$comparison
     names(res_DE) <-  params$comparison_label
@@ -460,7 +466,7 @@ partially_present <- function( pe_, params , layer ){
 #' @importFrom dplyr left_join join_by case_when mutate
 #' @importFrom utils head
 #' @importFrom ggrepel geom_text_repel
-dep_volcano <- function ( label, data  ,params,layer){
+dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
 
   cmp = label
 
@@ -476,14 +482,25 @@ dep_volcano <- function ( label, data  ,params,layer){
       temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>% dplyr::select(Uniprot_id,Genes, Protein.Names, perc_field, head(params$ensembl_col,-1) )
 
     }else{
-      #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
-      temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>% dplyr::select(Uniprot_id,Genes, Protein.Names, perc_field )
+
+      # YES EV annotation
+      if (annotation_ev == TRUE){
+        log_info(paste0(cmp,' :Adding  EV Annotation on volcano ...'))
+
+        temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>%
+               dplyr::select(Uniprot_id,Genes, Protein.Names, Subcellular.Location,  perc_field )
+
+      }else{
+        ## NO EV annotation
+        #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
+        temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>% dplyr::select(Uniprot_id,Genes, Protein.Names, perc_field )
+      }
     }
 
-    all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id))
+    all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id) )
 
   }else{
-    log_info(paste0(cmp,' :Starting fetching Top Table (peptide) ...'))
+    log_info(paste0(cmp,' :Starting fetching Top Table (peptide) ...') )
 
     ## peptide case
     all_res <- all_res %>% rownames_to_column(var = 'precursor_id' )
@@ -491,10 +508,8 @@ dep_volcano <- function ( label, data  ,params,layer){
 
     all_res <-  all_res %>% left_join( temp, by=join_by(precursor_id))
 
-
   }
   # previous condition -> more complex head(params$ensembl_col,-1) %in%  names(rowData(pe[['proteinRS']])))
-
 
   #all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id))
   if (params$filt_NaNDE == TRUE) {
@@ -525,30 +540,56 @@ dep_volcano <- function ( label, data  ,params,layer){
 
     DEall <- all_res[!is.na(all_res$adjPval) ,append(c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC","differential_expressed",perc_field),head(params$ensembl_col,-1) ) ]
 
-  }else{
-   ##
+    annotation_ev
 
-    p1 <- ggplot(data = all_res , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
-                                      text = sprintf("Protein_name: %s <br> Gene_symbol: %s", all_res$Protein.Names, all_res$Genes)   )  )  +
-      geom_point() +
-      theme_minimal() +
-      #geom_text_repel() +
-      geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
-      geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
-      scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
-      ggtitle(paste0("Volcano ",cmp) )
+  }else{
+     if (annotation_ev  == TRUE ){
+       p1 <- ggplot(data = all_res , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
+                                         text = sprintf("Protein_name: %s <br> Gene_symbol: %s <br> Subcellular Location: %s", all_res$Protein.Names, all_res$Genes, all_res$Subcellular.Location)   )  )  +
+         geom_point() +
+         theme_minimal() +
+         #geom_text_repel() +
+         geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
+         geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
+         scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
+         ggtitle(paste0("Volcano ",cmp) )
+
+
+
+     }else{
+       p1 <- ggplot(data = all_res , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
+                                         text = sprintf("Protein_name: %s <br> Gene_symbol: %s", all_res$Protein.Names, all_res$Genes)   )  )  +
+         geom_point() +
+         theme_minimal() +
+         #geom_text_repel() +
+         geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
+         geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
+         scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
+         ggtitle(paste0("Volcano ",cmp) )
+
+       }
+
+   ##
+  }
 
     #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
-
+   # export table
 
     if (layer == 'proteinRS') {
-      DEall <- all_res[!is.na(all_res$adjPval) , c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC", "differential_expressed",perc_field)]
+
+      if (annotation_ev  == TRUE ){
+        DEall <- all_res[!is.na(all_res$adjPval) ,
+                         c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC","Subcellular.Location", "differential_expressed",perc_field)]
+
+      }else{
+        DEall <- all_res[!is.na(all_res$adjPval) , c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC", "differential_expressed",perc_field)]
+      }
 
     } else {
       DEall <- all_res[!is.na(all_res$adjPval) , c('precursor_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC", "differential_expressed",perc_field)]
 
     }
-  }
+
   ## volcano annotate with gene name
 
   if (layer == 'proteinRS') {
@@ -708,6 +749,18 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
                              name = "proteinRS",
                              fun = aggr_mth_fun,
                              na.rm = TRUE)
+
+
+    evann_path <- system.file("quarto_template", "ProteinAnnotationsShotList.txt", package = "diareport")
+
+
+    ann_ev <- read.csv(evann_path, sep='\t')
+
+    rowData(pe_[['proteinRS']]) <- rowData(pe_[['proteinRS']]) %>% as.data.frame() %>%
+        left_join( ann_ev %>% select (Subcellular.Location,Entry),
+                   join_by( Protein.Ids == Entry )
+              )
+
 
   },error = function(err){
     print(paste("Q-feature Summarization:  ",err))

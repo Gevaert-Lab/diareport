@@ -524,12 +524,12 @@ Using an internal annotation database (*ProteinAnnotationsShotList_0.9*), protei
 
 ann <- read.csv('ProteinAnnotationsShotList.txt', sep='\t')
 
- type_names <- c('TM.protein','Intracellular','Secreted','Other','GAG-EGFP')
+ type_names <- c('TM.protein','Intracellular','Secreted','Other')
   
   # Create a named list of Precursor.Id vectors, one per tissue
   proteinID_lists <- lapply(type_names, function(type) {
-    ex <- ann %>% filter(Subcellular.Location == type ) %>% pull(Entry)
-    ex[ex  %in% rownames(assay(pe[['proteinRS']]))]
+    ex <- ann %>% filter(Subcellular.Location == type ) %>% pull (Entry)
+    ex [ex  %in% rownames(assay(pe[['proteinRS']]))]
 
   })
   
@@ -628,7 +628,7 @@ log_info('Running Analysis for each comparison..')
                  pe =pe,
                  label = cmp , 
                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
-                 template='_templateContrast.Rmd') 
+                 template='_templateContrast_EV.Rmd') 
     cat('\n\n')
     
    
