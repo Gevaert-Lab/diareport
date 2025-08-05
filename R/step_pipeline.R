@@ -115,6 +115,22 @@ step_processing_protein <- function(input) {
 
 
 #' @author Andrea Argentini
+#' @title  step_processing_peptide_ev
+#'
+#' @description
+#' Step function that aggregates qfeature object to protein level using the specified aggregation method.
+#'
+#' @param input A list containing pe, params_report, and aggr_method_f.
+#' @return The updated input list with pe aggregated at protein level.
+step_processing_peptide_ev <- function(input) {
+  aggr_method_f <- input$aggr_method_f
+  res <- processing_qfeat_peptide_ev(input$pe, params = input$params_report, aggr_method_f)
+  if (res$status == 1) stop(res$error)
+  input$pe <- res$q_feat
+  input
+}
+
+#' @author Andrea Argentini
 #' @title  step_processing_protein
 #'
 #' @description

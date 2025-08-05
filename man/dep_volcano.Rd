@@ -2,29 +2,31 @@
 % Please edit documentation in R/utils_function.R
 \name{dep_volcano}
 \alias{dep_volcano}
-\title{DEP_volcano}
+\title{dep_volcano}
 \usage{
-dep_volcano(label, data, params, layer)
+dep_volcano(label, data, params, layer, annotation_ev)
 }
 \arguments{
-\item{label}{contrast name}
+\item{label}{Character. Contrast label identifying the result column}
 
-\item{data}{Qfeatures object}
+\item{data}{QFeatures object with proteomics data.}
 
-\item{params}{document parameters}
+\item{params}{List. Contains analysis parameters like thresholds and ensembl settings.}
 
-\item{layer}{QFeature object}
+\item{layer}{Character. The name of the layer (e.g., "proteinRS", "peptideNorm").#' @return toptable result as dataframe}
+
+\item{annotation_ev}{Logical. Whether to include annotation columns.}
 }
 \value{
-toptable result as dataframe
-
-volcano volcano ggplot object
-
-volcano2file volcano ggplot annotated
+A list with the following elements:
+\describe{
+  \item{toptable}{Data.frame of differential expression results.}
+  \item{volcano}{ggplot object of the volcano plot.}
+  \item{volcano2file}{ggplot object with annotated labels for saving/export.}
+  }
 }
 \description{
-This function computes volcano plot and return the toptable for each comparison
-Remark : Model result are supposed to be in proteinRS layer.
+Generates volcano plots and returns both raw and annotated differential expression results for a given contrast. Assumes model results are stored in the proteinRS or peptideNorm layer.
 }
 \author{
 Andrea Argentini

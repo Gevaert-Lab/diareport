@@ -20,6 +20,7 @@ test_that("parsing_base", {
   params$confounder_list<- ""
   params$pep_per_prot<- 3
   params$nNonZero <- 30
+  params$filt_NaNDE <- TRUE
   params$filtPerGroup <- 'all'
   params$DIANN_ver2 <- TRUE
   params$Proteotypic <- TRUE
@@ -60,6 +61,7 @@ test_that("parsing_I", {
   params$folder_prj<- ""
   params$ensembl_annotation <- ""
   params$ensembl_col<- ""
+  params$filt_NaNDE <- TRUE
   params$confounder_list<- ""
   params$pep_per_prot<- 3
   params$nNonZero <- 30
@@ -104,6 +106,7 @@ test_that("parsing_II", {
   params$ensembl_annotation <- ""
   params$ensembl_col<- ""
   params$confounder_list<- ""
+  params$filt_NaNDE <- TRUE
   params$pep_per_prot<- 3
   params$nNonZero <- 30
   params$filtPerGroup <- 'all'
@@ -150,6 +153,7 @@ test_that("parsing_III", {
   params$pep_per_prot<- 3
   params$nNonZero <- 30
   params$filtPerGroup <- 'all'
+  params$filt_NaNDE <- TRUE
   params$DIANN_ver2 <- TRUE
   params$Proteotypic <- TRUE
   params$quantitative_features <- 'Precursor.Quantity'
@@ -184,6 +188,7 @@ test_that("parsing_IV", {
   params$aggr_method<- "medianPolish"
   params$normalization<- "quantiles"
   params$filtering_contaminant<- FALSE
+  params$filt_NaNDE <- TRUE
   params$contaminant_str<- ""
   params$folder_prj<- ""
   params$ensembl_annotation <- ""
@@ -231,6 +236,7 @@ test_that("parsing_V", {
   params$contaminant_str<- ""
   params$folder_prj<- ""
   params$ensembl_annotation <- ""
+  params$filt_NaNDE <- TRUE
   params$ensembl_col<- ""
   params$confounder_list<- ""
   params$pep_per_prot<- 3
@@ -270,6 +276,7 @@ test_that("parsing_VI", {
   params$aggr_method<- "medianPolish"
   params$normalization<- "quantiles"
   params$filtering_contaminant<- FALSE
+  params$filt_NaNDE <- TRUE
   params$contaminant_str <- "cont__"
   params$folder_prj<- ""
   params$ensembl_annotation <- ""
