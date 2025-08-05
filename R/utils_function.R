@@ -91,6 +91,113 @@ add_ensembl_annotation  <-function (pe_, params ) {
 
 
 #' @author Andrea Argentini
+#' @title  filteringNA_qfeat_ev
+#' @description
+#' This function adds number and percentage of non missing value for each group in assay specified.
+#' Moreover it adds computed the number of peptide per protein and the total number of non missing values.
+#'
+#' @param pe_ q_feature object
+#' @param params EDF data frame
+#' @param design EDF data frame
+#' @return status: int 0 non error  / 1 error found
+#' @return q_feat: q-feature created/ modified
+#' @return error: error message
+#' @importFrom SummarizedExperiment colData
+#' @importFrom logger log_info
+#' @importFrom  stats as.formula
+#' @importFrom QFeatures filterFeatures VariableFilter addAssay
+#'
+filteringNA_qfeat_ev <- function(pe_ , params, design){
+  group_val <- design %>% distinct(Group) %>%
+    arrange(Group) %>%  pull()
+  error <- ''
+  status <- 0
+  size <- dim(colData(pe_))[1]
+
+  ## ducplicate precursor layer
+  temp_l <- pe_[["precursor"]]
+  pe_ <- QFeatures::addAssay(pe_, temp_l, name = "precursor_")
+
+
+  tryCatch( expr = {
+
+    if (params$filtPerGroup != '') {
+      log_info('filtering per group')
+
+      ## or
+      if (params$filtPerGroup == 'at_least_one') {
+        log_info('filtering per group criteria: in at least one group ')
+        perc_group_val <- paste0("perc", group_val)
+        formula_condition <- paste(paste0(perc_group_val, " >= ", params$nNonZero), collapse = " | ")
+        dynamic_formula <- as.formula(paste0("~ ", formula_condition))
+      }
+      # and
+      if (params$filtPerGroup == 'all') {
+        log_info('filtering per group criteria: for all the groups ')
+        perc_group_val <- paste0("perc", group_val)
+        formula_condition <- paste(paste0(perc_group_val, " >= ", params$nNonZero), collapse = " & ")
+        dynamic_formula <- as.formula(paste0("~ ", formula_condition))
+      }
+
+      pe_ <-  filterFeatures(pe_,dynamic_formula)
+
+    }else{
+      log_info('filtering across all samples')
+      formula <- as.formula( paste0("~ nNonZero >= ", round(size  * ( params$nNonZero / 100))) )
+      pe_ <- filterFeatures(pe_, formula)
+      #pe_ <- filterFeatures(pe_, ~ nNonZero >= round(size  * ( params$nNonZero / 100))   )
+
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Filtering NaN :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  tryCatch( expr = {
+    if (params$Proteotypic){
+      log_info('Proteotypic filtering')
+      formula <- as.formula( paste0("~ Proteotypic == 1") )
+      pe_ <- filterFeatures(pe_, formula )
+      #pe_ <- filterFeatures(pe_, ~ Proteotypic == 1)
+
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Protetypic :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+
+  tryCatch( expr = {
+    if (params$filtering_contaminant){
+      log_info('Filtering contaminants')
+
+      pe_ <- filterFeatures ( pe_ , i ='precursor' ,VariableFilter("Protein.Names", params$contaminant_str, "contains", not=TRUE))
+    }
+
+  },error = function(err){
+    print(paste("Q-feature Contaminant :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  })
+
+  tryCatch( expr = {
+
+    log_info('Filtering only n peptides per protein')
+    formula <- as.formula( paste0("~   pep_per_prot >= ", params$pep_per_prot) )
+    pe_ <- filterFeatures(pe_, formula )
+
+  },error = function(err){
+    print(paste("Q-feature Num peptide Protein :  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  })
+
+
+  return( list(error= '', status= 0,q_feat = pe_ ))
+}
+
+
+#' @author Andrea Argentini
 #' @title  filteringNA_qfeat_protein
 #' @description
 #' This function adds number and percentage of non missing value for each group in assay specified.
@@ -199,17 +306,17 @@ filteringNA_qfeat <- function(pe_ , params, design){
 #' @param pe_ q_feature object where to perfomr DE analsysis
 #' @param params parameters
 #' @param layer name of the layer of the Qfeature obj
+#' @param ev_ann booloean flag to add or not EV annotation
 #' @return error: modified q-feature object
 #' @importFrom SummarizedExperiment rowData assay colData
 #' @importFrom logger log_info
 #' @importFrom msqrob2 msqrob getCoef makeContrast hypothesisTest
 #' @importFrom dplyr left_join select group_by summarise distinct n
 
-msqrob_model <- function(pe_, params, layer ){
+msqrob_model <- function(pe_, params, layer, ev_ann  ){
 
 
   tryCatch( expr = {
-
 
     pe_ <- msqrob(object = pe_, i = layer,
                   formula = as.formula( params$formula)  ,ridge = FALSE, overwrite = TRUE)
@@ -236,7 +343,13 @@ msqrob_model <- function(pe_, params, layer ){
     L <- makeContrast(contrast_list, parameterNames = coef)
     pe_ <- hypothesisTest(object = pe_, i = layer, contrast = L , overwrite=TRUE)
 
-    res_DE <-  lapply(params$comparisons, dep_volcano, data= pe_,  p=params , layer= layer )
+
+    res_DE <-  lapply(params$comparisons, dep_volcano,
+                        data= pe_,
+                        p=params ,
+                        layer= layer,
+                        annotation_ev = ev_ann )
+
 
     # params$comparison
     names(res_DE) <-  params$comparison_label
@@ -335,113 +448,222 @@ partially_present <- function( pe_, params , layer ){
 
 
 #' @author Andrea Argentini
-#' @title DEP_volcano
+#' @title get_protein_data
 #' @description
-#' This function computes volcano plot and return the toptable for each comparison
-#' Remark : Model result are supposed to be in proteinRS layer.
-#' @param label contrast name
-#' @param data Qfeatures object
-#' @param params document parameters
-#' @param layer QFeature object
-#' @return toptable result as dataframe
-#' @return volcano volcano ggplot object
-#' @return volcano2file volcano ggplot annotated
-#' @importFrom SummarizedExperiment rowData
-#' @importFrom logger log_info
-#' @importFrom ggplot2 ggplot geom_point theme_minimal ylab geom_vline geom_hline aes scale_color_manual ggtitle
-#' @importFrom tibble rownames_to_column
-#' @importFrom dplyr left_join join_by case_when mutate
+#' Helper function to extract and join relevant protein-level data, including annotations and percentage fields, from a QFeatures object.
+#' @param data QFeatures object containing proteomics data.
+#' @param label Character. Column name in the protein results layer to extract.
+#' @param params List. Analysis parameters including ensembl annotation settings.
+#' @param perc_field Character vector. Column names matching percentage values to include.
+#' @param annotation_ev Logical. Whether to include Subcellular.Location annotation.
+#' @return A data.frame with extracted and joined protein-level results.
+#' @importFrom dplyr select left_join
 #' @importFrom utils head
+#' @importFrom tibble rownames_to_column
+# Helper for protein layer data extraction
+get_protein_data <- function(data, label, params, perc_field, annotation_ev) {
+  res <- rowData(data[["proteinRS"]])[[label]] %>% rownames_to_column(var = "Uniprot_id")
+  data_df <- as.data.frame(rowData(data[["proteinRS"]])) %>% rownames_to_column("Uniprot_id")
+  if (params$ensembl_annotation != "") {
+    temp <- data_df %>% dplyr::select(Uniprot_id, Genes, Protein.Names, perc_field, head(params$ensembl_col, -1))
+  } else if (annotation_ev) {
+    temp <- data_df %>% dplyr::select(Uniprot_id, Genes, Protein.Names, Subcellular.Location, perc_field)
+  } else {
+    temp <- data_df %>% dplyr::select(Uniprot_id, Genes, Protein.Names, perc_field)
+  }
+  res %>% left_join(temp, by = "Uniprot_id")
+}
+
+
+#' @author Andrea Argentini
+#' @title get_peptide_data
+#' @description
+#' Helper function to extract and join relevant peptide-level data, including annotations and percentage fields, from a QFeatures object.
+#' @param data QFeatures object containing proteomics data.
+#' @param label Character. Column name in the peptide results layer to extract.
+#' @param perc_field Character vector. Column names matching percentage values to include.
+#' @param annotation_ev Logical. Whether to include Subcellular.Location annotation.
+#' @return A data.frame with extracted and joined peptide-level results.#' @importFrom dplyr select left_join
+ #' @importFrom tibble rownames_to_column
+get_peptide_data <- function(data, label, perc_field, annotation_ev) {
+  res <- rowData(data[["peptideNorm"]])[[label]] %>% rownames_to_column(var = "precursor_id")
+  data_df <- as.data.frame(rowData(data[["peptideNorm"]])) %>% rownames_to_column("precursor_id")
+  if (annotation_ev) {
+    temp <- data_df %>% dplyr::select(precursor_id, Genes, Protein.Ids, Protein.Names, Subcellular.Location, perc_field)
+  } else {
+    temp <- data_df %>% dplyr::select(precursor_id, Genes, Protein.Ids, Protein.Names, perc_field)
+  }
+  res %>% left_join(temp, by = "precursor_id")
+}
+
+
+#' @author Andrea Argentini
+#' @title process_results
+#' @description
+#' Adds a "differential_expressed" column to indicate UP, DOWN, or NO differential expression status based on logFC and adjusted p-value thresholds.
+#' @param all_res Data.frame containing statistical test results.
+#' @param params List. Must include `FC_thr`, `adjpval_thr`, and `filt_NaNDE`.
+#' @return A data.frame with an additional "differential_expressed" column.
+process_results <- function(all_res, params) {
+  if (params$filt_NaNDE) {
+    all_res <- all_res[!is.na(all_res$adjPval), ]
+  }
+  all_res$differential_expressed <- "NO"
+  all_res$differential_expressed[all_res$logFC >= params$FC_thr & all_res$adjPval < params$adjpval_thr] <- "UP"
+  all_res$differential_expressed[all_res$logFC <= -params$FC_thr & all_res$adjPval < params$adjpval_thr] <- "DOWN"
+  all_res
+}
+
+#' @author Andrea Argentini
+#' @title make_volcano_plot
+#' @description
+#' Generates a volcano plot using ggplot2 with optional tooltips for protein or gene annotations.
+#' @param df Data.frame containing differential expression results.
+#' @param params List of parameters including `FC_thr` and `adjpval_thr`.
+#' @param title Character. Title for the plot.
+#' @param annotation_fields Character vector. Column names to use in tooltip annotations (default: "Protein.Names", "Genes").
+#' @param extra_text  Optional character vector or string to append to the tooltip.
+#' @return  A ggplot object representing the volcano plot.
+#' @importFrom ggplot2 aes theme_minimal geom_point geom_vline geom_hline scale_color_manual ggtitle
+
+make_volcano_plot <- function(df, params, title, annotation_fields = c("Protein.Names", "Genes"), extra_text = NULL) {
+  # Compose tooltip string based on requested annotation fields
+  tooltip_text <- do.call(
+    sprintf,
+    c(
+      fmt = paste(
+        sapply(annotation_fields, function(f) paste0(f, ": %s")),
+        collapse = " <br> "
+      ),
+      lapply(annotation_fields, function(f) df[[f]])
+    )
+  )
+  if (!is.null(extra_text)) {
+    tooltip_text <- paste(tooltip_text, extra_text, sep = "<br> ")
+  }
+
+  ggplot(df, aes(x = logFC, y = -log10(pval), col = differential_expressed, text = tooltip_text)) +
+    geom_point() +
+    theme_minimal() +
+    geom_vline(xintercept = c(-params$FC_thr, params$FC_thr), col = "grey") +
+    geom_hline(yintercept = -log10(params$adjpval_thr), col = "grey") +
+    scale_color_manual(values = c("DOWN" = "blue", "NO" = "black", "UP" = "red")) +
+    ggtitle(title)
+}
+
+#' @author Andrea Argentini
+#' @title make_annotated_volcano
+#' @description
+#' Generates a volcano plot with gene or peptide labels for significantly expressed features.
+#' @param df Data.frame with differential expression results and a label column.
+#' @param params List of parameters including thresholds for fold change and adjusted p-value.
+#' @param title  Character. Title for the plot
+#' @param label_col Character. Column name used for labeling (default: "label_DE").
+#' @return  A ggplot object with text labels added.
 #' @importFrom ggrepel geom_text_repel
-dep_volcano <- function ( label, data  ,params,layer){
+#' @importFrom ggplot2 geom_point aes  geom_vline geom_hline scale_color_manual ggtitle
+make_annotated_volcano <- function(df, params, title, label_col = "label_DE") {
+  ggplot(df, aes(x = logFC, y = -log10(pval), col = differential_expressed, label = .data[[label_col]])) +
+    geom_point() +
+    geom_text_repel() +
+    geom_vline(xintercept = c(-params$FC_thr, params$FC_thr), col = "grey") +
+    geom_hline(yintercept = -log10(params$adjpval_thr), col = "grey") +
+    scale_color_manual(values = c("DOWN" = "blue", "NO" = "black", "UP" = "red")) +
+    ggtitle(title)
+}
+
+#' @author Andrea Argentini
+#' @title get_DEall_columns
+#' @description
+#' Returns a set of column names for the final output table, based on layer type and annotation presence.
+#' @param layer Character. Either "proteinRS" or "peptideNorm".
+#' @param annotation_ev Logical. Whether to include annotation columns like Subcellular.Location.
+#' @param perc_field Character vector of percentage fields to include.
+#' @return A character vector of column names to extract from the results
+get_DEall_columns <- function(layer, annotation_ev, perc_field) {
+
+  if (layer == "proteinRS") {
+    base_cols <- c("Uniprot_id", "Protein.Names", "Genes", "adjPval", "pval", "logFC", "differential_expressed")
+
+    if (annotation_ev) {
+      base_cols <- c(base_cols, "Subcellular.Location")
+    }
+    c(base_cols, perc_field)
+  } else {
+    base_cols <- c("precursor_id", "Protein.Names", "Genes", "adjPval", "pval", "logFC", "differential_expressed")
+
+    if (annotation_ev) {
+      base_cols <- c(base_cols, "Subcellular.Location")
+    }
+    # peptide case
+    c(base_cols, perc_field)
+  }
+}
+
+#' @author Andrea Argentini
+#' @title dep_volcano
+#' @description
+#' Generates volcano plots and returns both raw and annotated differential expression results for a given contrast. Assumes model results are stored in the proteinRS or peptideNorm layer.
+#' @param label Character. Contrast label identifying the result column
+#' @param data QFeatures object with proteomics data.
+#' @param params  List. Contains analysis parameters like thresholds and ensembl settings.
+#' @param layer Character. The name of the layer (e.g., "proteinRS", "peptideNorm").#' @return toptable result as dataframe
+#' @param annotation_ev Logical. Whether to include annotation columns.
+#' @return A list with the following elements:
+#' \describe{
+#'   \item{toptable}{Data.frame of differential expression results.}
+#'   \item{volcano}{ggplot object of the volcano plot.}
+#'   \item{volcano2file}{ggplot object with annotated labels for saving/export.}
+#'   }
+#' @importFrom SummarizedExperiment rowData
+#' @importFrom dplyr mutate case_when
+#' @importFrom logger log_info
+#' @importFrom stringr str_subset
+dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
 
   cmp = label
 
-  all_res <-  rowData(data[[layer]])[[label]]
-  perc_field <- rowData(data[[layer]]) %>% colnames() %>%  stringr::str_subset('perc')
-
-  if (layer == 'proteinRS') {
-    log_info(paste0(cmp,' :Starting fetching Top Table (protein) ...'))
-
-    # protein case
-    all_res <- all_res %>% rownames_to_column(var = 'Uniprot_id' )
-    if (   all( ! params$ensembl_annotation == '' ))  {
-      temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>% dplyr::select(Uniprot_id,Genes, Protein.Names, perc_field, head(params$ensembl_col,-1) )
-
-    }else{
-      #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
-      temp <- as.data.frame(rowData(data[[layer]])) %>% rownames_to_column('Uniprot_id') %>% dplyr::select(Uniprot_id,Genes, Protein.Names, perc_field )
-    }
-
-    all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id))
-
-  }else{
-    log_info(paste0(cmp,' :Starting fetching Top Table (peptide) ...'))
-
-    ## peptide case
-    all_res <- all_res %>% rownames_to_column(var = 'precursor_id' )
-    temp <- as.data.frame(rowData(data[['peptideNorm']])) %>% rownames_to_column('precursor_id') %>% select(precursor_id,Genes, Protein.Ids, Protein.Names,perc_field )
-
-    all_res <-  all_res %>% left_join( temp, by=join_by(precursor_id))
-
-
-  }
-  # previous condition -> more complex head(params$ensembl_col,-1) %in%  names(rowData(pe[['proteinRS']])))
-
-
-  #all_res <-  all_res %>% left_join( temp, by=join_by(Uniprot_id))
-  if (params$filt_NaNDE == TRUE) {
-  log_info(paste0(cmp,' :#by MSqrob: ', dim(all_res)[1]))
-  all_res <- all_res[ ! is.na(all_res$adjPval),]
-  log_info(paste0(cmp,' :#by MSqrob after p-adj Null filt.: ', dim(all_res)[1]))
-  }else{
-    log_info(paste0(cmp,' :#by MSqrob: ', dim(all_res)[1]))
+  perc_field <- rowData(data[[layer]]) %>% colnames() %>% str_subset("perc")
+  if (layer == "proteinRS") {
+    all_res <- get_protein_data(data, label, params, perc_field, annotation_ev)
+    id_field <- "Uniprot_id"
+  } else {
+    all_res <- get_peptide_data(data, label, perc_field, annotation_ev)
+    id_field <- "precursor_id"
   }
 
-  all_res$differential_expressed <- "NO"
-  all_res$differential_expressed[all_res$logFC >= params$FC_thr & all_res$adjPval < params$adjpval_thr] <- "UP"
-  all_res$differential_expressed[all_res$logFC <= - params$FC_thr & all_res$adjPval <  params$adjpval_thr] <- "DOWN"
+  all_res <- process_results(all_res, params)
 
   log_info(paste0(cmp,' Making Volcano plot ...'))
 
-  if ( ! params$ensembl_annotation == '') {
-    ## adding ensemble annotation
-    p1 <- ggplot(data = all_res , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
-                                      text = sprintf("Protein_name: %s <br> Gene_symbol: %s  <br> Chromosome name: %s",   all_res$Protein.Names, all_res$Genes,all_res$chromosome_name)   )  )  +
-      geom_point() +
-      theme_minimal() +
-      #geom_text_repel() +
-      geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
-      geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
-      scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
-      ggtitle(paste0("Volcano ",cmp) )
-
-    DEall <- all_res[!is.na(all_res$adjPval) ,append(c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC","differential_expressed",perc_field),head(params$ensembl_col,-1) ) ]
-
-  }else{
-   ##
-
-    p1 <- ggplot(data = all_res , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
-                                      text = sprintf("Protein_name: %s <br> Gene_symbol: %s", all_res$Protein.Names, all_res$Genes)   )  )  +
-      geom_point() +
-      theme_minimal() +
-      #geom_text_repel() +
-      geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
-      geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
-      scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
-      ggtitle(paste0("Volcano ",cmp) )
-
-    #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
-
-
-    if (layer == 'proteinRS') {
-      DEall <- all_res[!is.na(all_res$adjPval) , c('Uniprot_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC", "differential_expressed",perc_field)]
-
-    } else {
-      DEall <- all_res[!is.na(all_res$adjPval) , c('precursor_id',  "Protein.Names" , "Genes", "adjPval","pval","logFC", "differential_expressed",perc_field)]
-
-    }
+  if (params$ensembl_annotation != "") {
+    # show chromosome name
+    volcano <- make_volcano_plot(
+      df = all_res,
+      params = params,
+      title = paste0("Volcano ", cmp),
+      annotation_fields = c("Protein.Names", "Genes", "chromosome_name")
+    )
+  } else if (annotation_ev) {
+    volcano <- make_volcano_plot(
+      df = all_res,
+      params = params,
+      title = paste0("Volcano ", cmp),
+      annotation_fields = c("Protein.Names", "Genes", "Subcellular.Location")
+    )
+  } else {
+    volcano <- make_volcano_plot (
+      df = all_res,
+      params = params,
+      title = paste0("Volcano ", cmp ),
+      annotation_fields = c("Protein.Names", "Genes" )
+    )
   }
+    #perc_field <- rowData(data[['proteinRS']]) %>% colnames() %>%  stringr::str_subset('perc')
+   # export table
+
+    DEall <- all_res[!is.na(all_res$adjPval), get_DEall_columns(layer, annotation_ev, perc_field)]
+
   ## volcano annotate with gene name
 
   if (layer == 'proteinRS') {
@@ -461,17 +683,11 @@ dep_volcano <- function ( label, data  ,params,layer){
 
   log_info(paste0(cmp,' preparing annotated volcano plot ...'))
 
-  p_toFile <- ggplot(data = all_res_file , aes(x = logFC, y = -log10(pval) ,col=differential_expressed ,
-                                               label= label_DE  )  )  +
-    geom_point() +
-    geom_text_repel() +
-    geom_vline(xintercept = c(- params$FC_thr, params$FC_thr),col="grey") +
-    geom_hline(yintercept = -log10(params$adjpval_thr),col="grey") +
-    scale_color_manual(values=c("DOWN"="blue","NO"="black", "UP"="red"))+
-    ggtitle(paste0("Volcano ",cmp) )
+  p_toFile <-make_annotated_volcano( df = all_res_file,
+                          params = params,
+                          title = paste0("Volcano ", cmp) )
 
-
-  return ( list( toptable =DEall , volcano = p1, volcano2file =p_toFile ) )
+  return ( list( toptable =DEall , volcano = volcano, volcano2file =p_toFile ) )
 }
 
 
@@ -529,6 +745,103 @@ add_rowdata_detection <- function ( pe_ , design , assay ){
   return ( pe_ )
 }
 
+
+
+
+#' @author Andrea Argentini
+#' @title  processing_qfeat_protein_ev
+#'
+#' @description
+#' This function applies the following steps from precursor assays:
+#' 1. Log2 transformation of the percursor intensities (assay name: precursorLog)
+#' 2. Normalization of log2transformed intensities based on params$normalization method (assay name: precursorNorm).
+#' 3. Protein summarization based on  aggr_method_f method (assay name: proteinRS)
+#' In case of EV, we replciate the previous step also in the *_ layer, where Bovine protein are not filtered
+#'
+#' @param pe_ q_feature object where to add rowdata
+#' @param params EDF data frame
+#' @param aggr_mth_fun function for protein summarization
+#' @return status int 0 non error  / 1 error found
+#' @return q_feat q-feature created / modified
+#' @return error error message
+#' @importFrom QFeatures logTransform normalize aggregateFeatures
+#' @importFrom logger log_info
+
+processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
+  error <- ''
+  status <- 0
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  log_info('Intensity log tranformation')
+  if ( ! params$normalization == 'vsn'){
+    tryCatch( expr = {
+      pe_ <- logTransform(pe_, base = 2, i = "precursor",
+                          name = "precursorLog")
+
+    },error = function(err){
+      print(paste("Q-feature Log-trasformation:  ",err))
+      return( list(error= err, status= 1,q_feat =NULL ))
+    } )
+  }
+
+  # pe <- logTransform(pe, base = 2, i = "precursor",
+  #                    name = "precursorLog")
+
+
+  log_info('Normalization')
+
+  tryCatch( expr = {
+
+    if  (  params$normalization == 'vsn'){
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
+                       name = "precursorNorm")
+
+    }else{
+      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+                       name = "precursorNorm")
+    }
+    #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
+    #                           name = "precursorNorm")
+
+  },error = function(err){
+    print(paste("Q-feature Normalization:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  #MsCoreUtils::medianPolish()
+  log_info('Summarization at protein level')
+
+  tryCatch( expr = {
+    pe_ <- aggregateFeatures(pe_, i = "precursorNorm",
+                             fcol = "Protein.Ids",
+                             name = "proteinRS",
+                             fun = aggr_mth_fun,
+                             na.rm = TRUE)
+
+
+    evann_path <- system.file("quarto_template", "ProteinAnnotationsShotList.txt", package = "diareport")
+
+
+    ann_ev <- read.csv(evann_path, sep='\t')
+
+    rowData(pe_[['proteinRS']]) <- rowData(pe_[['proteinRS']]) %>% as.data.frame() %>%
+        left_join( ann_ev %>% select (Subcellular.Location,Entry),
+                   join_by( Protein.Ids == Entry )
+              )
+
+
+  },error = function(err){
+    print(paste("Q-feature Summarization:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+
+
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  return( list(error= '', status= 0, q_feat = pe_ ))
+
+}
 
 
 
@@ -698,6 +1011,94 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
 
 
 
+
+#' @author Andrea Argentini
+#' @title  processing_qfeat_peptide
+#'
+#' @description
+#' This function applies the following steps from precursor assay:
+#' 1. Summarize precursor to peptide (stripped sequence) intensities using sum function (assay name PeptideRawSum)
+#' 1. Log2 transformation of the peptide intensities (assay name: peptideLog)
+#' 2. Normalization of log2transformed peptide intensities based on params$normalization method (assay name: peptideNorm).
+#'
+#' @param pe_ q_feature object where to add rowdata
+#' @param params EDF data frame
+#' @param aggr_mth_fun function for protein summarization
+#' @return status: int 0 non error  / 1 error found
+#' @return q_feat: q-feature created / modified
+#' @return error: error message
+#' @importFrom QFeatures logTransform normalize aggregateFeatures infIsNA
+#' @importFrom logger log_info
+
+processing_qfeat_peptide_ev <- function(pe_ , params, aggr_mth_fun ){
+  error <- ''
+  status <- 0
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  log_info('Summarization Precursor -> Peptide (Sum)')
+
+
+  tryCatch( expr = {
+    pe_ <- aggregateFeatures(pe_, i = "precursor",
+                             fcol = "Stripped.Sequence",
+                             name = "PeptideRawSum",
+                             fun = aggr_mth_fun ,
+                             # slower but better than medianPolish
+                             na.rm = TRUE)
+
+  },error = function(err){
+    print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  if ( ! params$normalization == 'vsn'){
+
+    log_info('Intensity log tranformation')
+
+    tryCatch( expr = {
+      pe_ <- logTransform(pe_, base = 2, i = "PeptideRawSum",
+                          name = "peptideLog")
+      pe_ <- infIsNA(pe_, i='peptideLog')
+
+    },error = function(err){
+      print(paste("Q-feature Log-trasformation:  ",err))
+      return( list(error= err, status= 1,q_feat =NULL ))
+    } )
+  }
+
+  log_info('Normalization')
+
+
+  tryCatch( expr = {
+
+    if  (  params$normalization == 'vsn'){
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "PeptideRawSum",
+                                  name = "peptideNorm")
+    }else{
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
+                                  name = "peptideNorm")
+    }
+
+    evann_path <- system.file("quarto_template", "ProteinAnnotationsShotList.txt", package = "diareport")
+
+
+    ann_ev <- read.csv(evann_path, sep='\t')
+
+    rowData(pe_[['peptideNorm']]) <- rowData(pe_[['peptideNorm']]) %>% as.data.frame() %>%
+      left_join( ann_ev %>% select (Subcellular.Location,Entry),
+                 join_by( Protein.Ids == Entry )
+      )
+
+  },error = function(err){
+    print(paste("Q-feature Normalization:  ",err))
+    return( list(error= err, status= 1,q_feat =NULL ))
+  } )
+
+  log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
+
+  return( list(error= '', status= 0, q_feat = pe_ ))
+
+}
 
 
 
@@ -898,7 +1299,7 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
   result_check <- check_columns_presence (design, min_features =  min_col_need_design )
 
   if (result_check$status == 1) {
-    msg <- paste('Design file not recognized. It should contains at least the following columns:',min_col_need_design,sep='\n' )
+    msg <- paste('Design file not recognized. It should contains at least the following columns:', paste(min_col_need_design, collapse = ' '),sep='\n' )
     return( list(error= msg, status= result_check$status, q_feat =NULL ))
   }
 

@@ -21,7 +21,7 @@ test_that("msqrob2_base", {
   params$FC_thr <- 2
   params$adjpval_thr <- 0.05
   params$ensembl_annotation <- ''
-
+  params$filt_NaNDE = FALSE
   lst_wide_columns <- c('Run', 'Precursor.Id', 'Modified.Sequence', 'Stripped.Sequence', 'Protein.Group', 'Protein.Ids', 'Protein.Names', 'Genes', 'Proteotypic')
   min_col_need_design <- c("Sample","Run", "Group", "Replicate")
   colname__ <- c("Precursor.Id" , "Modified.Sequence","Stripped.Sequence","Protein.Group",
@@ -33,7 +33,7 @@ test_that("msqrob2_base", {
   #if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
   suppressWarnings(
 
-  out <- msqrob_model (pe, params,layer = 'proteinRS')
+  out <- msqrob_model (pe, params,layer = 'proteinRS', ev_ann= FALSE )
   )
 
   # Perform the tests

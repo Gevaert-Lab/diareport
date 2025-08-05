@@ -55,7 +55,7 @@ render_child <- function(data, path, pe, label , sample_rel,  template) {
 #'   - `plots`: A list of ggplot objects for each PCA plot.
 #'   - `msgs`: A list of messages indicating the type of PCA performed.
 #'   - `status`: A list of statuses (0 for success, 1 for invalid combinations).
-#' @importFrom ggplot2 ggplot geom_point xlab ylab ggtitle labs
+#' @importFrom ggplot2 ggplot geom_point xlab ylab ggtitle labs aes
 #' @importFrom dplyr %>%
 #' @importFrom SummarizedExperiment assay
 #' @importFrom QFeatures filterNA

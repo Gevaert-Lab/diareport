@@ -233,6 +233,104 @@ if ( ! is_empty(params$confounder_list) ) {
 ```
 
 
+
+## Contaminant Analysis
+
+```{r contaminat_visual}
+#| layout-ncol: 2
+#| layout-nrow: 1
+#| lightbox: true
+
+# df <- rowData(pe[['proteinRS_']]) %>% as.data.frame() %>% select( Protein.Ids, Protein.Names)
+# df <- df %>% mutate( type =sapply(
+#         str_split(Protein.Names, "_"), 
+#         function(x) {
+#           # Take the second part, split by semicolon if present
+#           second_part <- x[2]
+#           if (is.na(second_part)) return(NA)
+#           # If there's a semicolon, split and check for BOVIN
+#           splitted <- unlist(str_split(second_part, ";"))
+#           if ("BOVIN" %in% splitted) {
+#             return("BOVIN")
+#           } else { 
+#             return("HUMAN")
+#           }
+#         }
+#     ))
+# count_prot <- df %>% dplyr::count(type)
+
+
+df <- rowData(pe[['precursor_']]) %>% as.data.frame() %>% select( Protein.Ids, Protein.Names)
+df <- df %>% mutate( type =sapply(
+        str_split(Protein.Names, "_"), 
+        function(x) {
+          # Take the second part, split by semicolon if present
+          second_part <- x[2]
+          if (is.na(second_part)) return(NA)
+          # If there's a semicolon, split and check for BOVIN
+          splitted <- unlist(str_split(second_part, ";"))
+          if ("BOVIN" %in% splitted) {
+            return("BOVIN")
+          } else { 
+            return("HUMAN")
+          }
+        }
+    )
+  )
+count_precursor <- df %>% dplyr::count(type)
+
+
+## get the list of the precursor
+
+ type_names <- c('BOVIN','HUMAN')
+  
+  # Create a named list of Precursor.Id vectors, one per tissue
+  precursor_lists <- lapply(type_names, function(type) {
+    as.data.frame(rowData(pe[['precursor_']])) %>%
+      filter(str_detect (Protein.Names ,type )) %>%
+      pull(Precursor.Id)
+  })
+  
+    names(precursor_lists) <- type_names  
+
+## relative % 
+  total_ammount <- assay(pe[['precursor_']]) %>% base::colSums(na.rm = TRUE)
+  
+  d <- data.frame(
+  Sample = names(assay(pe[['precursor_']])[precursor_lists[['BOVINE']], ] %>% base::colSums(na.rm=TRUE))
+)
+ 
+  for (a in names(precursor_lists)){
+    
+      d[a] <- (assay(pe[['precursor_']])[precursor_lists[[a]],] %>% base::colSums(na.rm=TRUE) / total_ammount ) * 100 
+
+  }
+ log_info(paste( dim(d), collapse = ' '))
+ d_visual <- d %>% tidyr::gather( Contaminant , percentage ,- Sample)
+
+# cont_proteinID <- ggplot(count_prot, aes(x = "", y = n, fill = type)) +
+#   geom_bar(stat = "identity") +
+#   labs(y = "# Protein", x = "", fill = "Type") 
+# 
+# print(cont_proteinID)
+
+cont_precursor <- ggplot(count_precursor, aes(x = "", y = n, fill = type)) +
+  geom_bar(stat = "identity") +
+  labs(y = "# Precursor", x = "", fill = "Type") 
+
+print(cont_precursor)
+
+plot_perc <- ggplot( d_visual, aes(x= Sample, y = percentage ,fill = Contaminant ) ) +  
+  geom_col(position = "stack") +
+   scale_x_discrete(guide = guide_axis(angle = 90) )  + ylab("percentage of precursors") 
+
+ggsave(file.path(params$folder_prj,"Result","EV_contaminant_percentage_precursor_intensity.pdf"), 
+       plot = plot_perc, width = 8.27, height = 11.69, units = "in")
+
+print(plot_perc)
+```
+
+
 ## Normalization
 
 Normalization of the precursor intensities are:
@@ -375,6 +473,50 @@ htmltools::tagList(plotly_list)
 ```
 
 
+## EV Protein Marker
+
+In this section, the peptide intensities of 8 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1, GAG-EGFP) are summarized for all groups. The large dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$.
+
+```{r protein_marker}
+
+marker <- read.csv('ev_marker.tsv', sep=';')	
+
+
+peptide_list <-  rowData(pe[['peptideNorm']]) %>% as.data.frame() %>% 
+  filter( Protein.Ids %in% marker$Accession ) %>% rownames()
+
+ b <- assay(pe[['peptideNorm']])[peptide_list , ] %>% as.data.frame() 
+
+ b$protein <-   rowData(pe[['peptideNorm']]) %>% as.data.frame() %>% 
+  filter( Protein.Ids %in% marker$Accession ) %>% pull(Protein.Ids)
+
+
+
+ 
+f <-  b %>% 
+  tibble::rownames_to_column('peptide') %>% 
+  left_join( marker %>% select(Accession, Gene) , join_by(protein == Accession )) %>% 
+  tidyr::gather( Sample , summarize_intensities ,- Gene, -protein, -peptide) %>%   
+  left_join( colData(pe) %>%  as.data.frame() %>% select(SampleName , Group), join_by(Sample == SampleName ))
+
+ p_m <- ggplot(f, aes(x = Group, y = summarize_intensities, color = Gene, group = Gene)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.15), alpha = 0.3, size = 2) +
+  stat_summary(
+    fun = mean,
+    fun.min = function(x) mean(x) - sd(x),
+    fun.max = function(x) mean(x) + sd(x),
+    geom = "pointrange",
+    position = position_dodge(width = 0.1),
+     size = 1
+  ) 
+
+ggplotly(p_m)  
+  
+ggsave(file.path(params$folder_prj,"Result","EV_marker.pdf"), 
+       plot = p_m, width = 10.27, height = 11.69, units = "in")
+
+```
+
 ## DE Analysis
 
 Using MSqRob2 with the following formula `r params$formula` with ridge regression disabled
@@ -437,7 +579,7 @@ log_info('Running Analysis for each comparison..')
                  pe =pe,
                  label = cmp , 
                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
-                 template='_templateContrast_Peptide.Rmd') 
+                 template='_templateContrast_Peptide_EV.Rmd') 
     cat('\n\n')
     
    

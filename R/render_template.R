@@ -60,7 +60,9 @@ validate_template <- function(template) {
   valid_templates <- c( "Template_DIA-NN_peptide_dev.qmd",
                         "Template_DIA-NN_dev.qmd",
                         "Template_DIA-NN_dev_A.qmd",
-                        "Template_DIA-NN_peptide_dev_A.qmd")
+                        "Template_DIA-NN_dev_EV.qmd",
+                        "Template_DIA-NN_peptide_dev_A.qmd",
+                        "Template_DIA-NN_peptide_dev_EV.qmd")
 
   # Check if template is a string
   assertthat::assert_that(assertthat::is.string(template), msg = "template must be a string.")
@@ -402,6 +404,46 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
     initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f,layer='proteinRS')
 
   }
+
+  if (template == 'Template_DIA-NN_dev_EV.qmd' ) {
+    logfile <- file.path(report_folder, "logfile_protein.log")
+    file.create(logfile)  # This will truncate/overwrite the file
+    log_appender(logger::appender_file(logfile ), index = 2)
+    workflow_steps <- list(
+      step_read_diann,
+      step_import_qfeat,
+      step_add_rowdata_precursor,
+      step_filter_na_ev,
+      step_processing_protein_ev,
+      step_add_rowdata_protein,
+      step_add_ensembl,
+      step_msqrob_de_ev,
+      step_partial_result
+    )
+    initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f,layer='proteinRS')
+
+  }
+
+  if (template == 'Template_DIA-NN_peptide_dev_EV.qmd' ) {
+    logfile <- file.path(report_folder, "logfile_peptide.log")
+    file.create(logfile)  # This will truncate/overwrite the file
+    log_appender(logger::appender_file(logfile ), index = 2)
+    workflow_steps <- list(
+      step_read_diann,
+      step_import_qfeat,
+      step_add_rowdata_precursor,
+      step_filter_na_ev,
+      step_processing_peptide_ev,
+      step_add_rowdata_peptide,
+      step_msqrob_de_ev,
+      step_partial_result
+    )
+    params_report$part_item <- ''
+    params_report$part_value <- ''
+    initial_input <- list(params_report = params_report, aggr_method_f =  base::colSums,layer='peptideNorm')
+
+  }
+
   # vA peptide
   if (template == 'Template_DIA-NN_peptide_dev_A.qmd'   ){
     logfile <- file.path(report_folder, "logfile_peptide.log")
@@ -504,7 +546,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
   params_report$de_obj <-   file.path(temp_work_dir,basename(template_source_folder),'DEcomp_in.RDS'  )
 
 
-  if (template == "Template_DIA-NN_dev_A.qmd"  | template == 'Template_DIA-NN_peptide_dev_A.qmd' ){
+  if (template == "Template_DIA-NN_dev_A.qmd" | template == 'Template_DIA-NN_peptide_dev_A.qmd'| template == 'Template_DIA-NN_dev_EV.qmd'| template == 'Template_DIA-NN_peptide_dev_EV.qmd' ){
     saveRDS(result$part_item, file.path(temp_work_dir,basename(template_source_folder), 'part_item.RDS'  ))
     saveRDS(result$part_value, file.path(temp_work_dir,basename(template_source_folder), 'part_value.RDS'  ))
 

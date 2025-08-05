@@ -64,6 +64,39 @@ step_filter_na <- function(input) {
   input
 }
 
+
+#' @author Andrea Argentini
+#' @title  step_filter_na_ev
+#'
+#' @description
+#' Step function that applies filteringNA_qfeat to filter missing values in the qfeature object.
+#'
+#' @param input A list containing pe, params_report, and design.
+#' @return The updated input list with filtered pe.
+step_filter_na_ev <- function(input) {
+  res <- filteringNA_qfeat_ev(input$pe, params = input$params_report, input$design)
+  if (res$status == 1) stop(res$error)
+  input$pe <- res$q_feat
+  input
+}
+
+#' @author Andrea Argentini
+#' @title  step_processing_protein_ev
+#'
+#' @description
+#' Step function that aggregates qfeature object to protein level using the specified aggregation method.
+#'
+#' @param input A list containing pe, params_report, and aggr_method_f.
+#' @return The updated input list with pe aggregated at protein level.
+step_processing_protein_ev <- function(input) {
+  aggr_method_f <- input$aggr_method_f
+  res <- processing_qfeat_protein_ev( input$pe, params = input$params_report, aggr_method_f )
+  if (res$status == 1) stop (res$error)
+  input$pe <- res$q_feat
+  input
+}
+
+
 #' @author Andrea Argentini
 #' @title  step_processing_protein
 #'
@@ -80,6 +113,22 @@ step_processing_protein <- function(input) {
   input
 }
 
+
+#' @author Andrea Argentini
+#' @title  step_processing_peptide_ev
+#'
+#' @description
+#' Step function that aggregates qfeature object to protein level using the specified aggregation method.
+#'
+#' @param input A list containing pe, params_report, and aggr_method_f.
+#' @return The updated input list with pe aggregated at protein level.
+step_processing_peptide_ev <- function(input) {
+  aggr_method_f <- input$aggr_method_f
+  res <- processing_qfeat_peptide_ev(input$pe, params = input$params_report, aggr_method_f)
+  if (res$status == 1) stop(res$error)
+  input$pe <- res$q_feat
+  input
+}
 
 #' @author Andrea Argentini
 #' @title  step_processing_protein
@@ -154,7 +203,7 @@ step_add_ensembl <- function(input) {
 #' @return The updated input list with de_comparison and updated pe.
 step_msqrob_de <- function(input) {
   print(input$layer)
-  res <- msqrob_model(input$pe, input$params_report,input$layer )
+  res <- msqrob_model(input$pe, input$params_report,input$layer, ev_ann = FALSE )
   if (res$status == 0) {
     input$pe <- res$q_feat
     input$de_comparison <- res$de_comp
@@ -163,6 +212,28 @@ step_msqrob_de <- function(input) {
   }
   input
 }
+
+#' @author Andrea Argentini
+#' @title  step_msqrob_de
+#'
+#' @description
+#' Step function that runs msqrob_model and adds differential expression results to the input list.
+#' TO be used for EV template and Subcellular annotation of the proteins
+#'
+#' @param input A list containing pe and params_report.
+#' @return The updated input list with de_comparison and updated pe.
+step_msqrob_de_ev <- function(input) {
+  print(input$layer)
+  res <- msqrob_model(input$pe, input$params_report,input$layer, ev_ann = TRUE )
+  if (res$status == 0) {
+    input$pe <- res$q_feat
+    input$de_comparison <- res$de_comp
+  } else {
+    stop(res$error)
+  }
+  input
+}
+
 
 #' @author Andrea Argentini
 #' @title  step_partial_result

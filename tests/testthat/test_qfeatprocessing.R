@@ -76,6 +76,7 @@ test_that("procesProtein_qfeat", {
   params$comparisons <- c('GroupA - GroupB')
   params$filtPerGroup <- ''
   params$Proteotypic <- TRUE
+  params$normalization <- 'center.median'
   params$filtering_contaminant <- FALSE
   params$pep_per_prot <- 2
   params$nNonZero <- 30
