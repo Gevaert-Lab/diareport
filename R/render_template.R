@@ -42,8 +42,10 @@ validate_folder <- function(report_folder) {
   }
   dir.create(file.path( report_folder, "Result"),recursive = TRUE)
 
+ 
   # Check if the folder path is writable
-  assertthat::assert_that(assertthat::is.writeable(report_folder), msg = "The folder path is not writable.")
+  ## on R shared drive does not work ! 
+  #assertthat::assert_that(s.writeable_(report_folder), msg = "The folder path is not writable.")
 
   TRUE
 }
