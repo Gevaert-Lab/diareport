@@ -10,7 +10,7 @@ format:
     toc-title: 'DE Analysis'
     title-block-banner: '#1b2944'
     title-block-banner-color: '#f79646'
-
+    lightbox: auto
 execute: 
   echo: false
   warning: false
@@ -184,6 +184,9 @@ if ( ! is_empty(params$confounder_list)  )  {
 ```
 
 ```{r confounder_value_analysis}
+#| layout-ncol: 2
+#| layout-nrow: 2
+#| lightbox: true
 log_info('Confounder Analysis')
 cData<-as.data.frame(colData(pe))
 list_numeric <- list()
@@ -263,7 +266,9 @@ The plot shows the completeness of the experiments at precursor and summarized l
 
 
 ```{r missing_val_analysis}
-
+#| layout-ncol: 2
+#| layout-nrow: 1
+#| lightbox: true
 
 pdf(NULL) 
   peptidemissingness <- MSnbase::plotNA(assay(pe[["precursorNorm"]]))
@@ -309,6 +314,8 @@ DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample
 This section analyzes the completeness of protein readouts across all samples within each group. For each quantified protein, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
 
 ```{r completeness_analysis}
+#| lightbox: false
+#| 
 log_info('Completness Analysis...')
    custom_lower <- function(data, mapping, ...) {
     
@@ -506,6 +513,8 @@ log_info('Running Analysis for each comparison..')
 In the table you can find a summaries of the number of DE proteins found in all the comparisons. The overlapping of DE proteins among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
+#| lightbox: true
+
 log_info('DE Summary computation...')
 listInput <- list()
 df_summary = as.data.frame(matrix(ncol=3, nrow=0))

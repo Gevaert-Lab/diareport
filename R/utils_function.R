@@ -323,22 +323,34 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
     contrast_list <- paste0(params$comparisons, "=0")
 
 
-    coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
-    log_info('Model fitted ...')
-    if (is.null(coef)) {
-      coef <- rowData(pe_[[layer]])$msqrobModels[[2]] %>% getCoef %>% names
+    #coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
+    #log_info('Model fitted ...')
+    #if (is.null(coef)) {
+    #  coef <- rowData(pe_[[layer]])$msqrobModels[[2]] %>% getCoef %>% names
       #log_info(getCoef(rowData(pe[['proteinRS']])$msqrobModels[[2]]))
-      if (is.null(coef)){
-        return( list(error= 'Model is not able to converge', status= 1,q_feat =NULL,de_comp= NULL ))
-      }
-      getCoef(rowData(pe_[[layer]])$msqrobModels[[2]])
+    #  if (is.null(coef)){
+    #    return( list(error= 'Model is not able to converge', status= 1,q_feat =NULL,de_comp= NULL ))
+    #  }
+    #  getCoef(rowData(pe_[[layer]])$msqrobModels[[2]])
 
 
-    }else{
-      #log_info(getCoef(rowData(pe[[layer]])$msqrobModels[[1]]))
+    #}else{
+    #  #log_info(getCoef(rowData(pe[[layer]])$msqrobModels[[1]]))
       ## print coefficent
-      getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
-    }
+    #  getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
+    #}
+
+    ## new check proposed by Christof
+    coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
+    model_type <- sapply(rowData(pe_[[layer]])$msqrobModels, function(x) x@type)
+    success_model <- which(model_type != "fitError")
+    if (length(success_model) == 0)
+      return(list(
+          error = 'Model is not able to converge', status = 1,
+          q_feat = NULL, de_comp = NULL
+      )) 
+    getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
+    
     log_info('Making contrast & testing')
     L <- makeContrast(contrast_list, parameterNames = coef)
     pe_ <- hypothesisTest(object = pe_, i = layer, contrast = L , overwrite=TRUE)
@@ -402,7 +414,7 @@ partially_present <- function( pe_, params , layer ){
     #print(filt_val)
     term <- str_split(cmp, " - ")
     #print(term[[1]])
-    log_info(paste0('SelectingPartial Analysis Hits ',cmp))
+    log_info(paste0('Selecting Partial Analysis Hits ',cmp))
     percterm <- paste0('perc', unlist(term))
     #print(percterm[[1]])
     #print( percterm[[2]])
@@ -418,8 +430,8 @@ partially_present <- function( pe_, params , layer ){
       select ( sele_,.data[[percterm[[1]]]] , .data[[percterm[[2]]]] )
 
     final <- dplyr::bind_rows(pp_, pp__)
-    log_info(dim(final)[1])
-    log_info(dim(final)[2])
+    log_info( paste(dim(final) , collapse = ' '))
+    #log_info(dim(final)[2])
 
     if (layer == 'proteinRS'){
       rownames(final)  <- final$Protein.Ids
@@ -428,11 +440,11 @@ partially_present <- function( pe_, params , layer ){
     }
     log_info( paste(filt_val,collapse = ' '))
     #print(final %>% head())
-    log_info( paste0(rownames(final)[1:10],collapse = ' ' ))
+    #log_info( paste0(rownames(final)[1:10],collapse = ' ' ))
 
     part_list[[length(part_list) + 1]]  <- final
     ## only the selected Id.
-    log_info(paste0('Selecting  Partial Analysis Values ',cmp))
+    log_info(paste0('Selecting Partial Analysis Values ',cmp))
 
     matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val]
 
@@ -1532,7 +1544,7 @@ checkVariables <- function(inputParams, dfDesign, variables) {
   for (variable in variables) {
 
     extracted <- gsub(variable, "", extractedValues[grepl(variable, extractedValues,ignore.case = TRUE)], ignore.case = TRUE)
-
+    log_info(paste0(extracted, collapse = ' '))
     # Check if the extracted values are present in the corresponding column in dfDesign
     if (!all(extracted %in% unique(dfDesign[[variable]])) == TRUE) {
       error <- capture.output(cat(paste(variable, ' values in comparison do not match', variable, 'values in design file')))

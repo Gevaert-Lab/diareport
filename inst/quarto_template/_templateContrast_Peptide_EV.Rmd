@@ -48,10 +48,12 @@ DOWN <-  dim(data$toptable %>% filter(differential_expressed == 'DOWN'))[1]
  
 if ( UP > 0 | DOWN > 0   ) { 
   log_info('DE peptides found')
-  cat('Boxplot intensities of the top 10 DE peptides ordered by log2FC')
+  cat('Boxplot intensities of the top 20 DE peptides ordered by log2FC')
     ## peptide
-    d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% arrange(logFC) %>% head(10)%>%   pull(precursor_id)
-    u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% arrange(logFC) %>% head(10) %>%  pull(precursor_id)
+    d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% 
+      arrange(logFC) %>% head(10)%>%   pull(precursor_id)
+    u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% arrange(logFC) %>% 
+       head(10) %>%  pull(precursor_id)
 
      
    final <- c(d_l,u_l)
@@ -87,6 +89,10 @@ if ( UP > 0 | DOWN > 0   ) {
     scale_fill_manual( values= c( "#6d0286", "#35B779FF") ) +
     geom_jitter(color="black", size=1, alpha=0.8)  +
      ylab('Peptide Intensity') +
+     xlab(NULL) +
+     theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "top" )+
     facet_wrap( . ~ reorder(Peptide_info, logFC), nrow = 4  )
 
     print(dep_plot_crip)
