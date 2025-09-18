@@ -467,7 +467,13 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
   }
   # vA protein
-   if (template == 'Template_DIA-NN_dev_A.qmd'   ){
+   if (template == 'Template_DIA-NN_dev_A.qmd'  ){
+     ## check formula complexity
+     if (flag_complex_formula(as.formula(params_report$formula))$flag == TRUE) {
+        stop(paste('the formula indicated is too complex for', template, 'template \n',
+        'Terms not allowed: ',flag_complex_formula(as.formula(params_report$formula))$problematic_terms , sep = ' '))
+
+     }
      logfile <- file.path(report_folder, "logfile_protein.log")
      file.create(logfile)  # This will truncate/overwrite the file
      log_appender(logger::appender_file(logfile ), index = 2)
@@ -514,7 +520,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
  # initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f)
 
   result <- run_workflow_pipeline(initial_input, workflow_steps)
-
+  
   # Find the template file within the package
   template_source_folder <- system.file("quarto_template", package = "diareport")
   if (template_source_folder == "") {

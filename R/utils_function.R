@@ -399,6 +399,7 @@ partially_present <- function( pe_, params , layer ){
   }else{
     sele_ <- c( 'Stripped.Sequence', 'Protein.Group','Protein.Ids','Genes')
   }
+  ref <- colData(pe_) %>% as.data.frame() %>% pull('Group') %>% levels() %>% .[1]
 
   params_C <-gsub("Group", "", params$comparisons)
   part_list <- list()
@@ -407,12 +408,17 @@ partially_present <- function( pe_, params , layer ){
   for ( cmp in params_C){
     log_info(paste0('Computing Partial Analysis for ',cmp))
     #print(cmp)
+    if ( ! grepl(' - ', cmp) ){
+      log_info('Detected missing right term in the comparison')
+      cmp <- paste(cmp, ' - ', ref)
+      log_info(paste0('Comparison corrected with the reference: ', cmp))
+     }
     #cmp <-gsub("Group", "", cmp)
     contrast_values_parsed <- diareport::parse_comparison(cmp,'Group',pe_)
     #print(contrast_values_parsed)
     filt_val <- diareport::select_samples_comparison(contrast_values_parsed, pe_ , 'Group')
     #print(filt_val)
-    term <- str_split(cmp, " - ")
+    term <- str_split(cmp, "-", simplify = TRUE) %>% trimws()
     #print(term[[1]])
     log_info(paste0('Selecting Partial Analysis Hits ',cmp))
     percterm <- paste0('perc', unlist(term))
@@ -449,8 +455,8 @@ partially_present <- function( pe_, params , layer ){
     matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val]
 
   }
-  names(part_list) <-  params_C
-  names(matrix_list) <-  params_C
+  names(part_list) <-  params$comparison_label
+  names(matrix_list) <-  params$comparison_label
   return ( list( error= '', status= 0 , part_item =  part_list , part_value = matrix_list ) )
   } ,error = function(err){
     print(paste("Partially Present Analysis :  ",err))
@@ -1594,6 +1600,38 @@ check_dependencies = function(required_packages = required_packages){
 
 }
 
+#' @author Andrea Argentini
+#' @title flag_complex_formula
+#' @description
+#' This function inspects a linear model formula and checks whether it contains 
+#' any complex terms that are not allowed in the current analysis. 
+#' Complex terms include:
+#' - Interaction terms (using ":" or "*")
+#' - Transformations of variables (e.g., log(A), I(A^2), poly(A,2), scale(A))
+#' Only simple variable names (main effects) are considered valid.
+#' @param formula a linear model formula to check, e.g., ~ Group + Age
+#' @return a list containing:
+#' \item{flag}{logical; TRUE if the formula contains disallowed terms, FALSE otherwise}
+#' \item{problematic_terms}{character vector of the terms that are disallowed, or NULL if none}
+#' @export
+
+flag_complex_formula <- function(formula) {
+  # Extract terms
+  terms_obj <- terms(formula)
+  term_labels <- attr(terms_obj, "term.labels")
+  
+  # Allowed = simple variable names (letters, numbers, underscores, dots)
+  allowed_pattern <- "^[A-Za-z0-9_.]+$"
+  
+  # Flag terms that are not simple names
+  bad_terms <- term_labels[!grepl(allowed_pattern, term_labels)]
+  
+  if (length(bad_terms) > 0) {
+    return(list(flag = TRUE, problematic_terms = bad_terms))
+  } else {
+    return(list(flag = FALSE, problematic_terms = NULL))
+  }
+}
 
 
 #' @author Andrea Argentini
@@ -1611,6 +1649,7 @@ parse_comparison <- function(input_comparison, variable_names, pe) {
   if (length(variable_names) == 0 || (length(variable_names) == 1 && variable_names == '')) {
     stop("The variable_names vector is empty.")
   }
+  
 
   # Split the string by '-'
   split_strings <- strsplit(input_comparison, " - ")[[1]]
@@ -1623,7 +1662,6 @@ parse_comparison <- function(input_comparison, variable_names, pe) {
   # Extract substrings A and B
   A <- trimws(split_strings[1]) # Remove leading and trailing whitespaces
   B <- trimws(split_strings[2]) # Remove leading and trailing whitespaces
-
   # Check if either A or B is empty
   if (A == "" || B == "") {
     stop("One of the left or right substrings is empty.")

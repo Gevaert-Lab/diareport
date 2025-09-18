@@ -344,12 +344,7 @@ log_info('Completness Analysis...')
         geom_histogram(binwidth = 10, fill = "blue", color = "black") 
     }
     
-    
-    custom_diag <- function(data, mapping, ...) {
-      ggplot(data = data, mapping = mapping) + 
-        geom_histogram(binwidth = 10, fill = "blue", color = "black") 
-    }
-    
+  if  (dim(colData(pe) %>% as.data.frame() %>% distinct(Group))[1] <= 6) {  
     
     as.data.frame(rowData(pe[['proteinRS']])) %>% 
       select(matches("^perc"))  %>% 
@@ -360,6 +355,9 @@ log_info('Completness Analysis...')
       xlab = "percentage of detection",
       ylab = "percentage of detection"
       )
+      }else{
+        cat('Too many groups detected (> 6) for the completness analysis plot ')
+      }
   
 
 ```
@@ -475,6 +473,8 @@ log_info('Running Analysis for each comparison..')
     cat('\n\n')
     cat ('All proteins that are either uniquely present or absent in one of the two groups, and are not included in the differential expression (DE) results, are listed below. A heatmap displayed above the table illustrates the protein intensities across all replicates for the two groups of interest. \n')
     ### partial analysis result visualition   
+    log_info('Check Absent Analsysis')
+    log_info(cmp)
     if (dim( res_part_item[[cmp]])[1]==0){
        cat('\n\n')
   cat('No proteins present.')
