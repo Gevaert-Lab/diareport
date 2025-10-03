@@ -1,4 +1,4 @@
- ---
+---
 title: "DE Analysis Report (Protein): `r params$title`"
 subtitle: "`r params$subtitle`"
 author: "`r params$author`"
@@ -18,7 +18,7 @@ embed-resources: true
 theme: 
  - layout/brand 
  - layout/custom.scss
-
+ 
 params:
   description: ""
   title: ""

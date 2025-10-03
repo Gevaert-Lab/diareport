@@ -76,12 +76,16 @@ params:
 # 
 # log_threshold(INFO)
 log_appender(appender_console)
+
+#log_appender(appender_stdout)
+
 log_appender(appender_file(file.path( params$folder_prj, "logfile_protein.log")), index = 2)
 # formatter_data_frame <- function(df, ...) {
 #      pander::pander_return(df, style = 'simple')
 # }
 # log_formatter(formatter_data_frame)
- log_formatter(formatter_glue)
+
+log_formatter(formatter_glue)
 
 
 check_and_substitute_forbidden_chars <- function(input_string) {
@@ -158,6 +162,11 @@ res_part_value  <- readRDS(params$part_value )
 
 L <- readLines(params$design_file, n = 1)
 if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
+
+
+#log_info(paste(names(res_de),collapse = ', '))
+#log_info(paste(names(res_part_item),collapse = ', '))
+#log_info(paste(names(res_part_value),collapse = ', '))
 
 ```
 
@@ -402,7 +411,7 @@ for (a in   params$comparison_label ){
   dir.create(file.path(params$folder_prj,"Result","Contrast",check_and_substitute_forbidden_chars(a)), recursive = TRUE,showWarnings = TRUE)
 }  
 log_info('Saving pe object (qfeatures) as Rds file.')
-saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"))  
+saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"))
 
 ```
 
@@ -436,22 +445,19 @@ saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"
 log_info('Running Analysis for each comparison..')
 
   for (cmp in names(res_de)) {
-        log_info( paste0('  --  ',cmp)) 
+    log_info( paste0('  --  ',cmp)) 
 
     cmp_label <- gsub(params$contrast,'',cmp )
     cat( '## ', paste(cmp_label,sep=' '), '\n\n')
     cat ('This volcano plot summarizes the differential expression landscape in the comparison between the two groups \n')
-    
-    
+
     diareport::render_child(data = res_de[[cmp]],
                  pe =pe,
-                 label = cmp , 
+                 label = cmp_label , 
                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
                  template='_templateContrast.Rmd') 
     cat('\n\n')
-    
-   
-
+     
     if ( dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1] <= 5 || dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1]  >=  50     ){
       cat(' Not enough DE proteins (< 5) or too many DE proteins for heatmap visualization \n')
     }else{
@@ -462,7 +468,7 @@ log_info('Running Analysis for each comparison..')
     
     diareport::render_child(data = res_de[[cmp]],
                    pe = pe,
-                   sample_rel = filt_val,
+                   sample_rel = res_de[[cmp]]$sample_sel,
                  label = cmp,
                  path= file.path(  params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
                  template='_templateHeatMap.Rmd')

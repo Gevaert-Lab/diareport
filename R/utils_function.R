@@ -342,6 +342,7 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
 
     ## new check proposed by Christof
     coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
+    log_info(paste0(coef,collapse = ' ' ))
     model_type <- sapply(rowData(pe_[[layer]])$msqrobModels, function(x) x@type)
     success_model <- which(model_type != "fitError")
     if (length(success_model) == 0)
@@ -363,9 +364,9 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
                         annotation_ev = ev_ann )
 
 
-    # params$comparison
+    # params$comparisons
     names(res_DE) <-  params$comparison_label
-
+    
     return (list(error= '', status= 0,q_feat = pe_,de_comp= res_DE ))
 
   },error = function(err){
@@ -377,7 +378,7 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
 }
 
 #' @author Andrea Argentini
-#' @title  partial_present
+#' @title  partially_present
 #' @description
 #' This function perform DE Analysis with the input formula and the comparison of interest
 #' This work only with one VARIABLE Design --> ~ Group
@@ -640,7 +641,6 @@ get_DEall_columns <- function(layer, annotation_ev, perc_field) {
 dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
 
   cmp = label
-
   perc_field <- rowData(data[[layer]]) %>% colnames() %>% str_subset("perc")
   if (layer == "proteinRS") {
     all_res <- get_protein_data(data, label, params, perc_field, annotation_ev)
@@ -704,8 +704,17 @@ dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
   p_toFile <-make_annotated_volcano( df = all_res_file,
                           params = params,
                           title = paste0("Volcano ", cmp) )
+  
+  log_info(paste0(cmp,' selecting relevant sample names ...'))
+  
+  label_ready <- gsub(params$contrast, "", label)
+  contrast_values_parsed <- parse_comparison(input_comparison = label_ready, 
+                              variable_names =  params$contrast, 
+                              pe = data)
+  sample_sel <- select_samples_comparison(contrast_values_parsed, data , params$contrast)
+  
 
-  return ( list( toptable =DEall , volcano = volcano, volcano2file =p_toFile ) )
+  return ( list( toptable =DEall , volcano = volcano, volcano2file =p_toFile, sample_sel = sample_sel ) )
 }
 
 
@@ -1354,7 +1363,6 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
   if (! is_empty(params$confounder_list) ) {
     var2check <- append(var2check,params$confounder_list)
   }
-
   checkVar_res <-checkVariables(inputParams =params$comparisons ,
                                 dfDesign = design, variables= var2check)
   if (checkVar_res$status==1){
@@ -1553,7 +1561,7 @@ checkVariables <- function(inputParams, dfDesign, variables) {
     log_info(paste0(extracted, collapse = ' '))
     # Check if the extracted values are present in the corresponding column in dfDesign
     if (!all(extracted %in% unique(dfDesign[[variable]])) == TRUE) {
-      error <- capture.output(cat(paste(variable, ' values in comparison do not match', variable, 'values in design file')))
+      error <- capture.output(cat(paste(variable, ' values in comparison do not match', variable, 'values in design file \n Values detected are:',extracted )))
       status <- 1
     } else {
       error <- ""
@@ -1645,44 +1653,42 @@ flag_complex_formula <- function(formula) {
 #' @return list with left and right parsed value of the comparison
 #' @export
 parse_comparison <- function(input_comparison, variable_names, pe) {
-  # Check if variable_names is empty
+  log_info('Inside: parse_comparison ::::')
+  #log_info(paste(input_comparison, collapse = ' '))
+
   if (length(variable_names) == 0 || (length(variable_names) == 1 && variable_names == '')) {
     stop("The variable_names vector is empty.")
   }
-  
 
   # Split the string by '-'
   split_strings <- strsplit(input_comparison, " - ")[[1]]
-
-  # Check if the split resulted in two parts
   if (length(split_strings) != 2) {
     stop("Input string does not contain exactly one '-' separator.")
   }
 
   # Extract substrings A and B
-  A <- trimws(split_strings[1]) # Remove leading and trailing whitespaces
-  B <- trimws(split_strings[2]) # Remove leading and trailing whitespaces
-  # Check if either A or B is empty
+  A <- trimws(split_strings[1])
+  B <- trimws(split_strings[2])
   if (A == "" || B == "") {
     stop("One of the left or right substrings is empty.")
   }
 
+  #log_info(paste("Left term:", A))
+  #log_info(paste("Right term:", B))
+
   # Function to check if values belong to colData(pe)
   check_values <- function(sub_string, variable_names, pe) {
-    # Split the substring by '+'
     terms <- strsplit(sub_string, " \\+ ")[[1]]
     values <- list()
 
     for (variable in variable_names) {
-      values[[variable]] <- c() # Initialize an empty vector for the variable
-
+      values[[variable]] <- c()
+      col_values <- as.character(colData(pe)[[variable]])
+      #log_info(paste(col_values ,collapse = ','))
+      
       for (term in terms) {
-
-        if (length(term) > 0) {
-          # Check if the value belongs to colData(pe)
-          if (term %in% colData(pe)[[variable]]) {
-            values[[variable]] <- c(values[[variable]], term)
-          }
+        if (nzchar(term) && term %in% col_values) {
+          values[[variable]] <- c(values[[variable]], term)
         }
       }
 
@@ -1691,14 +1697,13 @@ parse_comparison <- function(input_comparison, variable_names, pe) {
         values[[variable]] <- NA
       }
     }
+
     values
   }
 
-  # Check values from A and B
   values_A <- check_values(A, variable_names, pe)
   values_B <- check_values(B, variable_names, pe)
 
-  # Return the checked values as a list
   list(Aleft = values_A, Bright = values_B)
 }
 

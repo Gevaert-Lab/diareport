@@ -20,6 +20,7 @@ render_child <- function(data, path, pe, label , sample_rel,  template) {
       envir = rlang::env(data = data, pe = pe,  label = label,  path = path),
       quiet = TRUE
     )
+  
     cat(res, sep = '\n')
     cat("\n")
   } else{

@@ -560,10 +560,10 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
 
     params_report$part_item <-   file.path(temp_work_dir,basename(template_source_folder),'part_item.RDS'  )
+    
     params_report$part_value <-   file.path(temp_work_dir,basename(template_source_folder),'part_value.RDS'  )
 
   }
-
 
 
   path <- file.path(temp_work_dir, basename(template_source_folder))

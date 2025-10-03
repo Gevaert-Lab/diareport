@@ -25,7 +25,7 @@ DT::datatable(part_table  ,
     'text-align' = 'left'  
   )   %>%  formatString(columns=perc_field, suffix='%')
 
-write.csv2(part_table, file= file.path(path,paste0("Exclusive_protein_notinDE",".csv")))
+write.csv2(part_table, file= file.path(path,paste0("Exclusive_protein_notinDE",".csv")),row.names=FALSE)
 
 
     #log_info('Plotting HEatmap')
