@@ -528,7 +528,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
   }
 
   # Create a unique temporary working directory
-  temp_work_dir <- file.path(tempdir(), paste0("quarto_temp_", Sys.getpid()))
+  #  tempdir() 'C:\\temp'
+  temp_work_dir <- file.path(tempdir()  , paste0("quarto_temp_", Sys.getpid()))
   dir.create(temp_work_dir, recursive = TRUE, showWarnings = FALSE)
   log_info('Temp folder created : {temp_work_dir}')
 
@@ -565,7 +566,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
   }
 
-
+  #  before only path now :  quarto_args = c("--output-dir", file.path(path, "out")
   path <- file.path(temp_work_dir, basename(template_source_folder))
 
   tryCatch({
@@ -575,8 +576,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
         output_format = "html",
         output_file = report_filename,
         execute_params = params_report,
-
-        quarto_args = c("--output-dir", path)
+        quarto_args = c(  "--no-clean", 
+                        "--output-dir", path)
       )
     })
   }, error = function(e) {
@@ -587,10 +588,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
     stop(e)
   })
   #})
-
   resource_folder_name <- paste0(tools::file_path_sans_ext(report_filename), "_files")
   rendered_report_path <- file.path(path, report_filename)
-
 
   if (!dir.exists(report_folder)) {
     dir.create(report_folder, recursive = TRUE)
