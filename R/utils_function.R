@@ -394,11 +394,10 @@ partially_present <- function( pe_, params , layer ){
   #  params$comparisons
 
   tryCatch( expr = {
-
   if (layer == 'proteinRS'){
     sele_ <- c('Protein.Group','Protein.Ids','Genes')
   }else{
-    sele_ <- c( 'Stripped.Sequence', 'Protein.Group','Protein.Ids','Genes')
+    sele_ <- c( 'Precursor.Id', 'Protein.Group','Protein.Ids','Genes')
   }
   ref <- colData(pe_) %>% as.data.frame() %>% pull('Group') %>% levels() %>% .[1]
 
@@ -963,7 +962,6 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
 #'
 #' @description
 #' This function applies the following steps from precursor assay:
-#' 1. Summarize precursor to peptide (stripped sequence) intensities using sum function (assay name PeptideRawSum)
 #' 1. Log2 transformation of the peptide intensities (assay name: peptideLog)
 #' 2. Normalization of log2transformed peptide intensities based on params$normalization method (assay name: peptideNorm).
 #'
@@ -984,25 +982,25 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
   log_info('Summarization Precursor -> Peptide (Sum)')
 
 
-  tryCatch( expr = {
-    pe_ <- aggregateFeatures(pe_, i = "precursor",
-                             fcol = "Stripped.Sequence",
-                             name = "PeptideRawSum",
-                             fun = aggr_mth_fun ,
-                             # slower but better than medianPolish
-                             na.rm = TRUE)
+  # tryCatch( expr = {
+  #   pe_ <- aggregateFeatures(pe_, i = "precursor",
+  #                            fcol = "Stripped.Sequence",
+  #                            name = "PeptideRawSum",
+  #                            fun = aggr_mth_fun ,
+  #                            # slower but better than medianPolish
+  #                            na.rm = TRUE)
 
-  },error = function(err){
-    print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
-    return( list(error= err, status= 1,q_feat =NULL ))
-  } )
+  # },error = function(err){
+  #   print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
+  #   return( list(error= err, status= 1,q_feat =NULL ))
+  # } )
 
   if ( ! params$normalization == 'vsn'){
 
   log_info('Intensity log tranformation')
 
   tryCatch( expr = {
-    pe_ <- logTransform(pe_, base = 2, i = "PeptideRawSum",
+    pe_ <- logTransform(pe_, base = 2, i = "precursor",
                         name = "peptideLog")
     pe_ <- infIsNA(pe_, i='peptideLog')
 
@@ -1018,7 +1016,7 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
   tryCatch( expr = {
 
     if  (  params$normalization == 'vsn'){
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "PeptideRawSum",
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
                                   name = "peptideNorm")
     }else{
       pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
@@ -1040,11 +1038,10 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
 
 
 #' @author Andrea Argentini
-#' @title  processing_qfeat_peptide
+#' @title  processing_qfeat_peptide_ev
 #'
 #' @description
 #' This function applies the following steps from precursor assay:
-#' 1. Summarize precursor to peptide (stripped sequence) intensities using sum function (assay name PeptideRawSum)
 #' 1. Log2 transformation of the peptide intensities (assay name: peptideLog)
 #' 2. Normalization of log2transformed peptide intensities based on params$normalization method (assay name: peptideNorm).
 #'
@@ -1062,28 +1059,31 @@ processing_qfeat_peptide_ev <- function(pe_ , params, aggr_mth_fun ){
   status <- 0
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
 
-  log_info('Summarization Precursor -> Peptide (Sum)')
+  #log_info('Summarization Precursor -> Peptide (Sum)')
 
 
-  tryCatch( expr = {
-    pe_ <- aggregateFeatures(pe_, i = "precursor",
-                             fcol = "Stripped.Sequence",
-                             name = "PeptideRawSum",
-                             fun = aggr_mth_fun ,
-                             # slower but better than medianPolish
-                             na.rm = TRUE)
+  # tryCatch( expr = {
+  #   pe_ <- aggregateFeatures(pe_, i = "precursor",
+  #                            fcol = "Stripped.Sequence",
+  #                            name = "PeptideRawSum",
+  #                            fun = aggr_mth_fun ,
+  #                            # slower but better than medianPolish
+  #                            na.rm = TRUE)
 
-  },error = function(err){
-    print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
-    return( list(error= err, status= 1,q_feat =NULL ))
-  } )
+  # },error = function(err){
+  #   print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
+  #   return( list(error= err, status= 1,q_feat =NULL ))
+  # } )
+
+  
+
 
   if ( ! params$normalization == 'vsn'){
 
     log_info('Intensity log tranformation')
 
     tryCatch( expr = {
-      pe_ <- logTransform(pe_, base = 2, i = "PeptideRawSum",
+      pe_ <- logTransform(pe_, base = 2, i = "precursor",
                           name = "peptideLog")
       pe_ <- infIsNA(pe_, i='peptideLog')
 
@@ -1099,7 +1099,7 @@ processing_qfeat_peptide_ev <- function(pe_ , params, aggr_mth_fun ){
   tryCatch( expr = {
 
     if  (  params$normalization == 'vsn'){
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "PeptideRawSum",
+      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
                                   name = "peptideNorm")
     }else{
       pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
