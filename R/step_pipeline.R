@@ -204,6 +204,7 @@ step_add_ensembl <- function(input) {
 step_msqrob_de <- function(input) {
   print(input$layer)
   res <- msqrob_model(input$pe, input$params_report,input$layer, ev_ann = FALSE )
+  
   if (res$status == 0) {
     input$pe <- res$q_feat
     input$de_comparison <- res$de_comp
@@ -214,7 +215,7 @@ step_msqrob_de <- function(input) {
 }
 
 #' @author Andrea Argentini
-#' @title  step_msqrob_de
+#' @title  step_msqrob_de_ev
 #'
 #' @description
 #' Step function that runs msqrob_model and adds differential expression results to the input list.

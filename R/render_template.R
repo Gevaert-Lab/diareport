@@ -135,7 +135,7 @@ validate_params <- function(params) {
       type = "string"
     ),
     contrast = list(
-      type = "string",
+      type = "character",
       check = function(x) !is_empty(x),
       msg = "Contrast must not be empty."
     ),
@@ -161,8 +161,8 @@ validate_params <- function(params) {
     ),
     normalization = list(
       type = "string",
-      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.meda", "quantiles","quantiles.robust","vsn"),
-      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.meda quantiles quantiles.robust vsn]"
+      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn"),
+      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn]"
     ),
     FC_thr = list(
       type = "numeric",
@@ -467,7 +467,13 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
   }
   # vA protein
-   if (template == 'Template_DIA-NN_dev_A.qmd'   ){
+   if (template == 'Template_DIA-NN_dev_A.qmd'  ){
+     ## check formula complexity
+     if (flag_complex_formula(as.formula(params_report$formula))$flag == TRUE) {
+        stop(paste('the formula indicated is too complex for', template, 'template \n',
+        'Terms not allowed: ',flag_complex_formula(as.formula(params_report$formula))$problematic_terms , sep = ' '))
+
+     }
      logfile <- file.path(report_folder, "logfile_protein.log")
      file.create(logfile)  # This will truncate/overwrite the file
      log_appender(logger::appender_file(logfile ), index = 2)
@@ -514,7 +520,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
  # initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f)
 
   result <- run_workflow_pipeline(initial_input, workflow_steps)
-
+  
   # Find the template file within the package
   template_source_folder <- system.file("quarto_template", package = "diareport")
   if (template_source_folder == "") {
@@ -522,7 +528,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
   }
 
   # Create a unique temporary working directory
-  temp_work_dir <- file.path(tempdir(), paste0("quarto_temp_", Sys.getpid()))
+  #  tempdir() 'C:\\temp'
+  temp_work_dir <- file.path(tempdir()  , paste0("quarto_temp_", Sys.getpid()))
   dir.create(temp_work_dir, recursive = TRUE, showWarnings = FALSE)
   log_info('Temp folder created : {temp_work_dir}')
 
@@ -554,12 +561,12 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
 
     params_report$part_item <-   file.path(temp_work_dir,basename(template_source_folder),'part_item.RDS'  )
+    
     params_report$part_value <-   file.path(temp_work_dir,basename(template_source_folder),'part_value.RDS'  )
 
   }
 
-
-
+  #  before only path now :  quarto_args = c("--output-dir", file.path(path, "out")
   path <- file.path(temp_work_dir, basename(template_source_folder))
 
   tryCatch({
@@ -569,8 +576,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
         output_format = "html",
         output_file = report_filename,
         execute_params = params_report,
-
-        quarto_args = c("--output-dir", path)
+        quarto_args = c(  "--no-clean", 
+                        "--output-dir", path)
       )
     })
   }, error = function(e) {
@@ -581,10 +588,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
     stop(e)
   })
   #})
-
   resource_folder_name <- paste0(tools::file_path_sans_ext(report_filename), "_files")
   rendered_report_path <- file.path(path, report_filename)
-
 
   if (!dir.exists(report_folder)) {
     dir.create(report_folder, recursive = TRUE)

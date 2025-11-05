@@ -10,7 +10,7 @@ format:
     toc-title: 'DE Analysis'
     title-block-banner: '#1b2944'
     title-block-banner-color: '#f79646'
-
+    lightbox: auto
 execute: 
   echo: false
   warning: false
@@ -76,12 +76,16 @@ params:
 # 
 # log_threshold(INFO)
 log_appender(appender_console)
+
+#log_appender(appender_stdout)
+
 log_appender(appender_file(file.path( params$folder_prj, "logfile_protein.log")), index = 2)
 # formatter_data_frame <- function(df, ...) {
 #      pander::pander_return(df, style = 'simple')
 # }
 # log_formatter(formatter_data_frame)
- log_formatter(formatter_glue)
+
+log_formatter(formatter_glue)
 
 
 check_and_substitute_forbidden_chars <- function(input_string) {
@@ -159,6 +163,11 @@ res_part_value  <- readRDS(params$part_value )
 L <- readLines(params$design_file, n = 1)
 if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
 
+
+#log_info(paste(names(res_de),collapse = ', '))
+#log_info(paste(names(res_part_item),collapse = ', '))
+#log_info(paste(names(res_part_value),collapse = ', '))
+
 ```
 
 ## Filtering steps
@@ -184,6 +193,9 @@ if ( ! is_empty(params$confounder_list)  )  {
 ```
 
 ```{r confounder_value_analysis}
+#| layout-ncol: 2
+#| layout-nrow: 2
+#| lightbox: true
 log_info('Confounder Analysis')
 cData<-as.data.frame(colData(pe))
 list_numeric <- list()
@@ -263,7 +275,9 @@ The plot shows the completeness of the experiments at precursor and summarized l
 
 
 ```{r missing_val_analysis}
-
+#| layout-ncol: 2
+#| layout-nrow: 1
+#| lightbox: true
 
 pdf(NULL) 
   peptidemissingness <- MSnbase::plotNA(assay(pe[["precursorNorm"]]))
@@ -309,6 +323,8 @@ DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample
 This section analyzes the completeness of protein readouts across all samples within each group. For each quantified protein, a completeness percentage is calculated based on the proportion of missing values across all samples in the group. These percentages are compared between the groups in the lower diagonal. On the diagonal, a histogram illustrates the distribution of detection percentages for each group
 
 ```{r completeness_analysis}
+#| lightbox: false
+#| 
 log_info('Completness Analysis...')
    custom_lower <- function(data, mapping, ...) {
     
@@ -337,12 +353,7 @@ log_info('Completness Analysis...')
         geom_histogram(binwidth = 10, fill = "blue", color = "black") 
     }
     
-    
-    custom_diag <- function(data, mapping, ...) {
-      ggplot(data = data, mapping = mapping) + 
-        geom_histogram(binwidth = 10, fill = "blue", color = "black") 
-    }
-    
+  if  (dim(colData(pe) %>% as.data.frame() %>% distinct(Group))[1] <= 6) {  
     
     as.data.frame(rowData(pe[['proteinRS']])) %>% 
       select(matches("^perc"))  %>% 
@@ -353,6 +364,9 @@ log_info('Completness Analysis...')
       xlab = "percentage of detection",
       ylab = "percentage of detection"
       )
+      }else{
+        cat('Too many groups detected (> 6) for the completness analysis plot ')
+      }
   
 
 ```
@@ -397,7 +411,7 @@ for (a in   params$comparison_label ){
   dir.create(file.path(params$folder_prj,"Result","Contrast",check_and_substitute_forbidden_chars(a)), recursive = TRUE,showWarnings = TRUE)
 }  
 log_info('Saving pe object (qfeatures) as Rds file.')
-saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"))  
+saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"))
 
 ```
 
@@ -431,22 +445,19 @@ saveRDS(pe, file = file.path( params$folder_prj, "Result","qfeat_experiment.Rds"
 log_info('Running Analysis for each comparison..')
 
   for (cmp in names(res_de)) {
-        log_info( paste0('  --  ',cmp)) 
+    log_info( paste0('  --  ',cmp)) 
 
     cmp_label <- gsub(params$contrast,'',cmp )
     cat( '## ', paste(cmp_label,sep=' '), '\n\n')
     cat ('This volcano plot summarizes the differential expression landscape in the comparison between the two groups \n')
-    
-    
+
     diareport::render_child(data = res_de[[cmp]],
                  pe =pe,
-                 label = cmp , 
+                 label = cmp_label , 
                  path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  
                  template='_templateContrast.Rmd') 
     cat('\n\n')
-    
-   
-
+     
     if ( dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1] <= 5 || dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1]  >=  50     ){
       cat(' Not enough DE proteins (< 5) or too many DE proteins for heatmap visualization \n')
     }else{
@@ -457,7 +468,7 @@ log_info('Running Analysis for each comparison..')
     
     diareport::render_child(data = res_de[[cmp]],
                    pe = pe,
-                   sample_rel = filt_val,
+                   sample_rel = res_de[[cmp]]$sample_sel,
                  label = cmp,
                  path= file.path(  params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
                  template='_templateHeatMap.Rmd')
@@ -468,6 +479,8 @@ log_info('Running Analysis for each comparison..')
     cat('\n\n')
     cat ('All proteins that are either uniquely present or absent in one of the two groups, and are not included in the differential expression (DE) results, are listed below. A heatmap displayed above the table illustrates the protein intensities across all replicates for the two groups of interest. \n')
     ### partial analysis result visualition   
+    log_info('Check Absent Analsysis')
+    log_info(cmp)
     if (dim( res_part_item[[cmp]])[1]==0){
        cat('\n\n')
   cat('No proteins present.')
@@ -506,6 +519,8 @@ log_info('Running Analysis for each comparison..')
 In the table you can find a summaries of the number of DE proteins found in all the comparisons. The overlapping of DE proteins among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
+#| lightbox: true
+
 log_info('DE Summary computation...')
 listInput <- list()
 df_summary = as.data.frame(matrix(ncol=3, nrow=0))

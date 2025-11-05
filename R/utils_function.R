@@ -317,28 +317,41 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
 
 
   tryCatch( expr = {
-
+    
     pe_ <- msqrob(object = pe_, i = layer,
                   formula = as.formula( params$formula)  ,ridge = FALSE, overwrite = TRUE)
     contrast_list <- paste0(params$comparisons, "=0")
 
 
-    coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
-    log_info('Model fitted ...')
-    if (is.null(coef)) {
-      coef <- rowData(pe_[[layer]])$msqrobModels[[2]] %>% getCoef %>% names
+    #coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
+    #log_info('Model fitted ...')
+    #if (is.null(coef)) {
+    #  coef <- rowData(pe_[[layer]])$msqrobModels[[2]] %>% getCoef %>% names
       #log_info(getCoef(rowData(pe[['proteinRS']])$msqrobModels[[2]]))
-      if (is.null(coef)){
-        return( list(error= 'Model is not able to converge', status= 1,q_feat =NULL,de_comp= NULL ))
-      }
-      getCoef(rowData(pe_[[layer]])$msqrobModels[[2]])
+    #  if (is.null(coef)){
+    #    return( list(error= 'Model is not able to converge', status= 1,q_feat =NULL,de_comp= NULL ))
+    #  }
+    #  getCoef(rowData(pe_[[layer]])$msqrobModels[[2]])
 
 
-    }else{
-      #log_info(getCoef(rowData(pe[[layer]])$msqrobModels[[1]]))
+    #}else{
+    #  #log_info(getCoef(rowData(pe[[layer]])$msqrobModels[[1]]))
       ## print coefficent
-      getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
-    }
+    #  getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
+    #}
+
+    ## new check proposed by Christof
+    coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
+    log_info(paste0(coef,collapse = ' ' ))
+    model_type <- sapply(rowData(pe_[[layer]])$msqrobModels, function(x) x@type)
+    success_model <- which(model_type != "fitError")
+    if (length(success_model) == 0)
+      return(list(
+          error = 'Model is not able to converge', status = 1,
+          q_feat = NULL, de_comp = NULL
+      )) 
+    getCoef(rowData(pe_[[layer]])$msqrobModels[[1]])
+    
     log_info('Making contrast & testing')
     L <- makeContrast(contrast_list, parameterNames = coef)
     pe_ <- hypothesisTest(object = pe_, i = layer, contrast = L , overwrite=TRUE)
@@ -351,9 +364,9 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
                         annotation_ev = ev_ann )
 
 
-    # params$comparison
+    # params$comparisons
     names(res_DE) <-  params$comparison_label
-
+    
     return (list(error= '', status= 0,q_feat = pe_,de_comp= res_DE ))
 
   },error = function(err){
@@ -365,7 +378,7 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
 }
 
 #' @author Andrea Argentini
-#' @title  partial_present
+#' @title  partially_present
 #' @description
 #' This function perform DE Analysis with the input formula and the comparison of interest
 #' This work only with one VARIABLE Design --> ~ Group
@@ -387,6 +400,7 @@ partially_present <- function( pe_, params , layer ){
   }else{
     sele_ <- c( 'Stripped.Sequence', 'Protein.Group','Protein.Ids','Genes')
   }
+  ref <- colData(pe_) %>% as.data.frame() %>% pull('Group') %>% levels() %>% .[1]
 
   params_C <-gsub("Group", "", params$comparisons)
   part_list <- list()
@@ -395,14 +409,19 @@ partially_present <- function( pe_, params , layer ){
   for ( cmp in params_C){
     log_info(paste0('Computing Partial Analysis for ',cmp))
     #print(cmp)
+    if ( ! grepl(' - ', cmp) ){
+      log_info('Detected missing right term in the comparison')
+      cmp <- paste(cmp, ' - ', ref)
+      log_info(paste0('Comparison corrected with the reference: ', cmp))
+     }
     #cmp <-gsub("Group", "", cmp)
     contrast_values_parsed <- diareport::parse_comparison(cmp,'Group',pe_)
     #print(contrast_values_parsed)
     filt_val <- diareport::select_samples_comparison(contrast_values_parsed, pe_ , 'Group')
     #print(filt_val)
-    term <- str_split(cmp, " - ")
+    term <- str_split(cmp, "-", simplify = TRUE) %>% trimws()
     #print(term[[1]])
-    log_info(paste0('SelectingPartial Analysis Hits ',cmp))
+    log_info(paste0('Selecting Partial Analysis Hits ',cmp))
     percterm <- paste0('perc', unlist(term))
     #print(percterm[[1]])
     #print( percterm[[2]])
@@ -418,8 +437,8 @@ partially_present <- function( pe_, params , layer ){
       select ( sele_,.data[[percterm[[1]]]] , .data[[percterm[[2]]]] )
 
     final <- dplyr::bind_rows(pp_, pp__)
-    log_info(dim(final)[1])
-    log_info(dim(final)[2])
+    log_info( paste(dim(final) , collapse = ' '))
+    #log_info(dim(final)[2])
 
     if (layer == 'proteinRS'){
       rownames(final)  <- final$Protein.Ids
@@ -428,17 +447,17 @@ partially_present <- function( pe_, params , layer ){
     }
     log_info( paste(filt_val,collapse = ' '))
     #print(final %>% head())
-    log_info( paste0(rownames(final)[1:10],collapse = ' ' ))
+    #log_info( paste0(rownames(final)[1:10],collapse = ' ' ))
 
     part_list[[length(part_list) + 1]]  <- final
     ## only the selected Id.
-    log_info(paste0('Selecting  Partial Analysis Values ',cmp))
+    log_info(paste0('Selecting Partial Analysis Values ',cmp))
 
     matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val]
 
   }
-  names(part_list) <-  params_C
-  names(matrix_list) <-  params_C
+  names(part_list) <-  params$comparison_label
+  names(matrix_list) <-  params$comparison_label
   return ( list( error= '', status= 0 , part_item =  part_list , part_value = matrix_list ) )
   } ,error = function(err){
     print(paste("Partially Present Analysis :  ",err))
@@ -622,7 +641,6 @@ get_DEall_columns <- function(layer, annotation_ev, perc_field) {
 dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
 
   cmp = label
-
   perc_field <- rowData(data[[layer]]) %>% colnames() %>% str_subset("perc")
   if (layer == "proteinRS") {
     all_res <- get_protein_data(data, label, params, perc_field, annotation_ev)
@@ -686,8 +704,17 @@ dep_volcano <- function ( label, data  ,params,layer, annotation_ev ){
   p_toFile <-make_annotated_volcano( df = all_res_file,
                           params = params,
                           title = paste0("Volcano ", cmp) )
+  
+  log_info(paste0(cmp,' selecting relevant sample names ...'))
+  
+  label_ready <- gsub(params$contrast, "", label)
+  contrast_values_parsed <- parse_comparison(input_comparison = label_ready, 
+                              variable_names =  params$contrast, 
+                              pe = data)
+  sample_sel <- select_samples_comparison(contrast_values_parsed, data , params$contrast)
+  
 
-  return ( list( toptable =DEall , volcano = volcano, volcano2file =p_toFile ) )
+  return ( list( toptable =DEall , volcano = volcano, volcano2file =p_toFile, sample_sel = sample_sel ) )
 }
 
 
@@ -1336,7 +1363,6 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
   if (! is_empty(params$confounder_list) ) {
     var2check <- append(var2check,params$confounder_list)
   }
-
   checkVar_res <-checkVariables(inputParams =params$comparisons ,
                                 dfDesign = design, variables= var2check)
   if (checkVar_res$status==1){
@@ -1532,10 +1558,10 @@ checkVariables <- function(inputParams, dfDesign, variables) {
   for (variable in variables) {
 
     extracted <- gsub(variable, "", extractedValues[grepl(variable, extractedValues,ignore.case = TRUE)], ignore.case = TRUE)
-
+    log_info(paste0(extracted, collapse = ' '))
     # Check if the extracted values are present in the corresponding column in dfDesign
     if (!all(extracted %in% unique(dfDesign[[variable]])) == TRUE) {
-      error <- capture.output(cat(paste(variable, ' values in comparison do not match', variable, 'values in design file')))
+      error <- capture.output(cat(paste(variable, ' values in comparison do not match', variable, 'values in design file \n Values detected are:',extracted )))
       status <- 1
     } else {
       error <- ""
@@ -1582,6 +1608,38 @@ check_dependencies = function(required_packages = required_packages){
 
 }
 
+#' @author Andrea Argentini
+#' @title flag_complex_formula
+#' @description
+#' This function inspects a linear model formula and checks whether it contains 
+#' any complex terms that are not allowed in the current analysis. 
+#' Complex terms include:
+#' - Interaction terms (using ":" or "*")
+#' - Transformations of variables (e.g., log(A), I(A^2), poly(A,2), scale(A))
+#' Only simple variable names (main effects) are considered valid.
+#' @param formula a linear model formula to check, e.g., ~ Group + Age
+#' @return a list containing:
+#' \item{flag}{logical; TRUE if the formula contains disallowed terms, FALSE otherwise}
+#' \item{problematic_terms}{character vector of the terms that are disallowed, or NULL if none}
+#' @export
+
+flag_complex_formula <- function(formula) {
+  # Extract terms
+  terms_obj <- terms(formula)
+  term_labels <- attr(terms_obj, "term.labels")
+  
+  # Allowed = simple variable names (letters, numbers, underscores, dots)
+  allowed_pattern <- "^[A-Za-z0-9_.]+$"
+  
+  # Flag terms that are not simple names
+  bad_terms <- term_labels[!grepl(allowed_pattern, term_labels)]
+  
+  if (length(bad_terms) > 0) {
+    return(list(flag = TRUE, problematic_terms = bad_terms))
+  } else {
+    return(list(flag = FALSE, problematic_terms = NULL))
+  }
+}
 
 
 #' @author Andrea Argentini
@@ -1595,44 +1653,42 @@ check_dependencies = function(required_packages = required_packages){
 #' @return list with left and right parsed value of the comparison
 #' @export
 parse_comparison <- function(input_comparison, variable_names, pe) {
-  # Check if variable_names is empty
+  log_info('Inside: parse_comparison ::::')
+  #log_info(paste(input_comparison, collapse = ' '))
+
   if (length(variable_names) == 0 || (length(variable_names) == 1 && variable_names == '')) {
     stop("The variable_names vector is empty.")
   }
 
   # Split the string by '-'
   split_strings <- strsplit(input_comparison, " - ")[[1]]
-
-  # Check if the split resulted in two parts
   if (length(split_strings) != 2) {
     stop("Input string does not contain exactly one '-' separator.")
   }
 
   # Extract substrings A and B
-  A <- trimws(split_strings[1]) # Remove leading and trailing whitespaces
-  B <- trimws(split_strings[2]) # Remove leading and trailing whitespaces
-
-  # Check if either A or B is empty
+  A <- trimws(split_strings[1])
+  B <- trimws(split_strings[2])
   if (A == "" || B == "") {
     stop("One of the left or right substrings is empty.")
   }
 
+  #log_info(paste("Left term:", A))
+  #log_info(paste("Right term:", B))
+
   # Function to check if values belong to colData(pe)
   check_values <- function(sub_string, variable_names, pe) {
-    # Split the substring by '+'
     terms <- strsplit(sub_string, " \\+ ")[[1]]
     values <- list()
 
     for (variable in variable_names) {
-      values[[variable]] <- c() # Initialize an empty vector for the variable
-
+      values[[variable]] <- c()
+      col_values <- as.character(colData(pe)[[variable]])
+      #log_info(paste(col_values ,collapse = ','))
+      
       for (term in terms) {
-
-        if (length(term) > 0) {
-          # Check if the value belongs to colData(pe)
-          if (term %in% colData(pe)[[variable]]) {
-            values[[variable]] <- c(values[[variable]], term)
-          }
+        if (nzchar(term) && term %in% col_values) {
+          values[[variable]] <- c(values[[variable]], term)
         }
       }
 
@@ -1641,14 +1697,13 @@ parse_comparison <- function(input_comparison, variable_names, pe) {
         values[[variable]] <- NA
       }
     }
+
     values
   }
 
-  # Check values from A and B
   values_A <- check_values(A, variable_names, pe)
   values_B <- check_values(B, variable_names, pe)
 
-  # Return the checked values as a list
   list(Aleft = values_A, Bright = values_B)
 }
 

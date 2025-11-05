@@ -18,7 +18,7 @@ embed-resources: true
 theme: 
  - layout/brand 
  - layout/custom.scss
-
+ 
 params:
   description: ""
   title: ""
@@ -320,11 +320,7 @@ log_info('Completness Analysis...')
     }
     
     
-    custom_diag <- function(data, mapping, ...) {
-      ggplot(data = data, mapping = mapping) + 
-        geom_histogram(binwidth = 10, fill = "blue", color = "black") 
-    }
-    
+    if  (dim(colData(pe) %>% as.data.frame() %>% distinct(Group))[1] <= 6) {  
     
     as.data.frame(rowData(pe[['proteinRS']])) %>% 
       select(matches("^perc"))  %>% 
@@ -336,7 +332,9 @@ log_info('Completness Analysis...')
       ylab = "percentage of detection"
       )
   
-
+    }else{
+        cat('Too many groups detected (> 6) for the completness analysis plot')
+      }
 ```
 
 ## PCA

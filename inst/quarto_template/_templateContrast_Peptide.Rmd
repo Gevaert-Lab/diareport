@@ -50,10 +50,11 @@ if ( UP > 0 | DOWN > 0   ) {
   log_info('DE peptides found')
   cat('Boxplot intensities of the top 10 DE peptides ordered by log2FC')
     ## peptide
-    d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% arrange(logFC) %>% head(10)%>%   pull(precursor_id)
-    u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% arrange(logFC) %>% head(10) %>%  pull(precursor_id)
+    d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% 
+            arrange(logFC) %>% head(5)%>%   pull(precursor_id)
+    u_l <- data$toptable %>% filter(differential_expressed == 'UP') %>% 
+            arrange(desc(logFC)) %>% head(5) %>%  pull(precursor_id)
 
-     
    final <- c(d_l,u_l)
    
    contrast_values_parsed <- parse_comparison(label, params$contrast, pe)
@@ -75,7 +76,7 @@ if ( UP > 0 | DOWN > 0   ) {
         values_2col <- params$contrast
       }
     
-  ann <-  data$toptable  %>%   filter ( precursor_id  %in% final ) %>% dplyr::select(precursor_id  ,logFC,adjPval) %>%  mutate( Peptide_info=  str_wrap( paste(precursor_id,'\n','LogFC:',round(logFC,2),'adjPval',format(adjPval,scientific= TRUE) ,sep=' '),width= 15)  ) %>% dplyr::select(  -adjPval)
+  ann <-  data$toptable  %>%   filter ( precursor_id  %in% final ) %>% dplyr::select(precursor_id  ,logFC,adjPval) %>%  mutate( Peptide_info=  str_wrap( paste(precursor_id,'\n','LogFC:',round(logFC,2),'adjPval',formatC(adjPval, format = "e", digits = 2) ,sep=' '),width= 15)  ) %>% dplyr::select(  -adjPval)
   
   
     ab <-  ab %>% rownames_to_column('Precursor') %>% left_join(ann, join_by(Precursor  == precursor_id)) %>%  gather(Sample, Intensity ,- c(Precursor ,Peptide_info,logFC))  %>% left_join( as.data.frame(colData(pe)), join_by( Sample  == SampleName) )
@@ -87,7 +88,11 @@ if ( UP > 0 | DOWN > 0   ) {
     scale_fill_manual( values= c( "#6d0286", "#35B779FF") ) +
     geom_jitter(color="black", size=1, alpha=0.8)  +
      ylab('Peptide Intensity') +
-    facet_wrap( . ~ reorder(Peptide_info, logFC), nrow = 4  )
+     xlab(NULL) +
+     theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "top" )+
+    facet_wrap( . ~ reorder(Peptide_info, logFC), nrow = 2 )
 
     print(dep_plot_crip)
   
