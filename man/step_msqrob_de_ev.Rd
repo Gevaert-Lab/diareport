@@ -2,7 +2,7 @@
 % Please edit documentation in R/step_pipeline.R
 \name{step_msqrob_de_ev}
 \alias{step_msqrob_de_ev}
-\title{step_msqrob_de}
+\title{step_msqrob_de_ev}
 \usage{
 step_msqrob_de_ev(input)
 }
