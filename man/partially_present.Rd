@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_function.R
 \name{partially_present}
 \alias{partially_present}
-\title{partial_present}
+\title{partially_present}
 \usage{
 partially_present(pe_, params, layer)
 }
