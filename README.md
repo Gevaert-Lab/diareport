@@ -23,6 +23,13 @@ The statistical analysis is powered by the **MSqrob2** and **QFeatures** package
 
     Follow the instructions on the [Quarto website](https://quarto.org/docs/download/).
 
+5. **Install Bioconductor dependencies**   
+    ``` r 
+        if (!requireNamespace("BiocManager", quietly = TRUE))
+            install.packages("BiocManager")
+ 
+        BiocManager::install(c("QFeatures", "SummarizedExperiment", "MsCoreUtils", "msqrob2"))
+    ```
 ------------------------------------------------------------------------
 
 ## 🛠 How to Install the R Package
@@ -65,6 +72,8 @@ Specify the template name via the `template_file` parameter in the `render_dia_r
 **Remark:**  Always use the *full path* to indicate a folder or file.
 
 ``` r
+library(diareport)
+
 report_target_folder  <- '../path/UPS_spike'
 template_file = "Template_DIA-NN_dev.qmd"
 output_filename = "Output_report.html"
