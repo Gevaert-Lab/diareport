@@ -1,7 +1,7 @@
 
 ```{r}
 
-log_info('Inside Contrast Visual for Peptide.... ')
+log_info('Inside Contrast Visual for Precursor.... ')
 
 label_work <- gsub('Group','',label)
   label_work_f <- gsub(' ','_',label_work)
@@ -47,8 +47,8 @@ UP <- dim(data$toptable %>% filter(differential_expressed == 'UP'))[1]
 DOWN <-  dim(data$toptable %>% filter(differential_expressed == 'DOWN'))[1]
  
 if ( UP > 0 | DOWN > 0   ) { 
-  log_info('DE peptides found')
-  cat('Boxplot intensities of the top 10 DE peptides ordered by log2FC')
+  log_info('DE precursor found')
+  cat('Boxplot intensities of the top 10 DE precursor ordered by log2FC')
     ## peptide
     d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% 
             arrange(logFC) %>% head(5)%>%   pull(precursor_id)
@@ -87,7 +87,7 @@ if ( UP > 0 | DOWN > 0   ) {
     geom_boxplot() +
     scale_fill_manual( values= c( "#6d0286", "#35B779FF") ) +
     geom_jitter(color="black", size=1, alpha=0.8)  +
-     ylab('Peptide Intensity') +
+     ylab('Precursor Intensity') +
      xlab(NULL) +
      theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
