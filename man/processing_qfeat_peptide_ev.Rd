@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_function.R
 \name{processing_qfeat_peptide_ev}
 \alias{processing_qfeat_peptide_ev}
-\title{processing_qfeat_peptide}
+\title{processing_qfeat_peptide_ev}
 \usage{
 processing_qfeat_peptide_ev(pe_, params, aggr_mth_fun)
 }
@@ -22,7 +22,6 @@ error: error message
 }
 \description{
 This function applies the following steps from precursor assay:
-1. Summarize precursor to peptide (stripped sequence) intensities using sum function (assay name PeptideRawSum)
 1. Log2 transformation of the peptide intensities (assay name: peptideLog)
 2. Normalization of log2transformed peptide intensities based on params$normalization method (assay name: peptideNorm).
 }

@@ -4,7 +4,7 @@
 \alias{merge_default_parameters}
 \title{merge_default_parameters}
 \usage{
-merge_default_parameters(params_int)
+merge_default_parameters(params_int, flag_str = "rep")
 }
 \arguments{
 \item{params_int}{parameters}

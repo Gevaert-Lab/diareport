@@ -42,7 +42,6 @@ validate_folder <- function(report_folder) {
   }
   dir.create(file.path( report_folder, "Result"),recursive = TRUE)
 
- 
   # Check if the folder path is writable
   ## on R shared drive does not work ! 
   #assertthat::assert_that(s.writeable_(report_folder), msg = "The folder path is not writable.")
@@ -76,6 +75,156 @@ validate_template <- function(template) {
 
   TRUE
 }
+
+
+
+#' Validate parameters for qfeature obj function only
+#'
+#' @param params A list of parameters to be validated.
+#' @return TRUE if all parameters are valid, otherwise stops with an error message.
+#' @importFrom assertthat assert_that is.string
+validate_params_qfeatobj <- function(params) {
+
+  # is_empty <- function(x) {
+  #   return(length(x) == 0 || (length(x) == 1 && x == ''))
+  # }
+
+  `%||%` <- function(a, b) if (!is.null(a)) a else b
+
+  is_empty <- function(x) {
+    is.character(x) && length(x) == 1 && x == ''
+  }
+
+  check_formula <- function(x) {
+    tryCatch({
+      as.formula(x)
+      TRUE
+    }, error = function(e) {
+      FALSE
+    })
+  }
+
+  check_path <- function(x) {
+    if (length(x) == 1 && x == '' ){
+      TRUE
+    }else{
+      file.exists(x)
+    }
+  }
+  requirements <- list(
+    input_file = list(
+      type = "string",
+      check = function(x) file.exists(x),
+      msg = "Input file does not exist or is not specified."
+    ),
+    design_file = list(
+      type = "string",
+      check = function(x) file.exists(x),
+      msg = "Design file does not exist or is not specified."
+    ),
+    aggr_method = list(
+      type = "string",
+      check = function(x) x %in% c("medianPolish", "RobustSummary", "colMeans", "colMedians"),
+      msg = "Aggregation method must be one of: medianPolish, RobustSummary, colMeans, colMedians."
+    ),
+    normalization = list(
+      type = "string",
+      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn"),
+      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn]"
+    ),
+    
+    pep_per_prot= list(
+      type = "numeric",
+      check = function(x) x > 0,
+      msg = "pep_per_prot must be a positive number."
+    ),
+    nNonZero= list(
+      type = "numeric",
+      check = function(x) x > 0,
+      msg = "nNonZero must be a positive number."
+    ),
+    filtPerGroup = list(
+      type = "string",
+      check = function(x) x %in% c('','all','at_least_one'),
+      msg = "filtPerGroup must be '', 'all', or 'at_least_one'."
+    ),
+    wildstr_run = list(
+      type = 'string',
+      check = function(x) !is_empty(x),
+      msg = "wildstr_run must not be empty."
+    ),
+    DIANN_ver2= list(
+      type= 'logical',
+      check = function(x) is.logical(x),
+      msg = "DIANN_ver2 must be logical (TRUE or FALSE)."
+    ),
+    keep_design_order= list(
+      type= 'logical',
+      check = function(x) is.logical(x),
+      msg = "keep_design_order must be logical (TRUE or FALSE)."
+    ),
+    mbr = list(
+      type= 'logical',
+      check = function(x) is.logical(x),
+      msg = "mbr must be logical (TRUE or FALSE)."
+    ),
+    Proteotypic = list(
+      type= 'logical',
+      check = function(x) is.logical(x),
+      msg = "Proteotypic must be logical (TRUE or FALSE)."
+    ),
+    ensembl_annotation  = list(
+      type= 'string',
+      check= function(x) check_path(x),
+      msg = "Ensembl annotation file does not exist (if specified)."
+    ),
+    ensembl_col = list(
+      type = 'character',
+      check = function(x) any(x %in% c("hgnc_symbol") ) ||  params$ensembl_col == "" ,
+      msg = "hgnc_symbol columns must be indicated"
+    )
+   
+    # Add more as needed
+  )
+
+
+  for (p in names(requirements)) {
+    val <- params[[p]]
+    req <- requirements[[p]]
+    # Type check
+
+    if (req$type == "string") {
+      assertthat::assert_that(assertthat::is.string(val), msg = paste0("'", p, "' must be a string."))
+    } else if (req$type == "numeric") {
+      assertthat::assert_that(is.numeric(val), msg = paste0("'", p, "' must be numeric."))
+    } else if (req$type == "logical") {
+      assertthat::assert_that(is.logical(val), msg = paste0("'", p, "' must be logical (TRUE/FALSE)."))
+    } else if (req$type == "character") {
+      assertthat::assert_that(is.character(val), msg = paste0("'", p, "' must be a character vector."))
+    } # Add more types as needed
+
+    # Value check (if provided)
+    if (!is.null(req$check)) {
+      assertthat::assert_that(req$check(val), msg = req$msg %||% paste0("Invalid value for '", p, "'.") )
+    }
+  }
+  # to be added
+
+  if (!is.null(params$ensembl_annotation) && (! is_empty(params$ensembl_annotation)) ) {
+    if (is.null(params$ensembl_col) || all(params$ensembl_col == "")) {
+      stop("When provide an ensembl_annotation file, you must provide a non-empty 'ensembl_col'")
+    }
+  }
+
+  if (!is.null(params$ensembl_col) && (! is_empty(params$ensembl_col)) ) {
+    if (is.null(params$ensembl_annotation) || params$ensembl_annotation == "") {
+      stop("Please provide an ensembl_annotation file, you  provided a non-empty 'ensembl_col' with a non valid 'ensembl_annotation' file")
+    }
+  }
+
+  TRUE
+}
+
 
 
 #' Validate parameters for the DIA-NN report
@@ -224,7 +373,7 @@ validate_params <- function(params) {
       check = function(x) any(x %in% c("hgnc_symbol") ) ||  params$ensembl_col == "" ,
       msg = "hgnc_symbol columns must be indicated"
     ),
-    filtering_contaminant= list(type= 'logical',
+      filtering_contaminant= list(type= 'logical',
       check = function(x) is.logical(x),
       msg = "filtering_contaminant must be logical (TRUE or FALSE)." ),
     contaminant_str = list(type= 'string'),
@@ -294,9 +443,12 @@ validate_params <- function(params) {
 #' @return merged parameters
 #' @importFrom yaml read_yaml
 
-merge_default_parameters <- function  ( params_int  ){
+merge_default_parameters <- function  ( params_int, flag_str = 'rep'  ){
 
-  yaml_path <- system.file("config", "default_parameter.yaml", package = "diareport")
+  if (flag_str == 'qfeat'){  yaml_path <- system.file("config", "default_parameter_exportQfeat.yaml", package = "diareport")
+    }else{
+      yaml_path <- system.file("config", "default_parameter.yaml", package = "diareport")
+    }
   default_p <- read_yaml(yaml_path )
 
   miss <- base::setdiff(names(default_p$params), names(params_int))
@@ -615,4 +767,132 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
   log_info("Report generated successfully at: {report_folder}")
   #return(report_folder)
+}
+
+
+
+#' @author Andrea Argentini
+#' @title Create a QFeature object from DIA-NN report data
+#'
+#' @description
+#' The `create_qfeat_obj()` function processes DIA-NN report data and constructs a
+#' QFeature object at the protein level, performing aggregation, filtering, and
+#' metadata annotation steps according to the provided parameters.
+#'
+#' @param params_report A list of parameters defining the processing and aggregation workflow.
+#'   This list should include elements such as:
+#'   \describe{
+#'     \item{\code{input_file}}{Path to the DIA-NN report file.}
+#'     \item{\code{design_file}}{Path to the experimental design file.}
+#'     \item{\code{aggr_method}}{Aggregation method for peptide-to-protein summarization. Supported values:
+#'     \code{"medianPolish"}, \code{"RobustSummary"}, \code{"colMeans"}, or \code{"colMedians"}.}
+#'     \item{\code{normalization}}{Normalization strategy to apply to intensity data.}
+#'     \item{\code{pep_per_prot}}{Minimum number of peptides per protein required.}
+#'     \item{\code{nNonZero}}{Minimum number of non-zero values required.}
+#'     \item{\code{quantitative_features}}{Quantitative feature to extract from DIA-NN (e.g., intensity, LFQ).}
+#'     \item{\code{filtering_contaminant}}{Logical, whether to remove contaminants.}
+#'     \item{\code{mbr}}{Logical, whether match-between-runs (MBR) was used in DIA-NN.}
+#'     \item{\code{DIANN_ver2}}{Logical, whether the input corresponds to DIA-NN version ≥ 2 output.}
+#'   }
+#' @param report_folder A character string specifying the folder where output files (e.g., logs and QFeature object) will be stored.
+#'
+#' @details
+#' The function performs the following steps:
+#' \enumerate{
+#'   \item Validates or creates the specified report folder.
+#'   \item Merges user-specified parameters with default settings.
+#'   \item Validates the provided parameters.
+#'   \item Initializes logging and sets up file-based log tracking.
+#'   \item Defines the aggregation function based on \code{params_report$aggr_method}.
+#'   \item Executes a predefined workflow pipeline consisting of multiple data-processing steps:
+#'     \code{step_read_diann}, \code{step_import_qfeat}, \code{step_add_rowdata_precursor},
+#'     \code{step_filter_na}, \code{step_processing_protein}, \code{step_add_rowdata_protein},
+#'     and \code{step_add_ensembl}.
+#'   \item Saves the resulting QFeature object as an \code{RDS} file in the specified report folder.
+#' }
+#'
+#' The output QFeature object can be used for downstream proteomics analyses, such as
+#' differential expression, PCA visualization, or volcano plot generation.
+#'
+#' @return
+#' Invisibly returns the resulting QFeature object (also saved as an `.Rds` file named `qfeat_.Rds`
+#' inside the specified `report_folder`).
+#'
+#' @importFrom MsCoreUtils medianPolish robustSummary
+#' @importFrom matrixStats colMedians
+#' @importFrom logger log_info log_threshold log_appender log_formatter INFO appender_console appender_file
+#' @importFrom yaml write
+
+#'
+#' @seealso
+#' \code{\link{run_workflow_pipeline}}, \code{\link{QFeatures::QFeatures}}
+#'
+#' @examples
+#' \dontrun{
+#' params <- list(
+#'   input_file = "path/to/diann_report.tsv",
+#'   design_file = "path/to/design.csv",
+#'   aggr_method = "medianPolish"
+#' )
+#' create_qfeat_obj(params, "output_folder")
+#' }
+#'
+#' @export
+create_qfeat_obj  <- function(params_report, report_folder ) {
+
+  # Validate folder added here. 
+
+  invalid_chars <- "[<>:\"/\\|?*]"
+
+   if (!dir.exists(file.path(report_folder))) {
+    dir.create(file.path( report_folder),recursive = TRUE)
+  }
+  
+  params_report <- merge_default_parameters(params_report , flag_str = 'qfeat')
+
+  validate_params_qfeatobj(params_report)
+
+  # other set up
+  log_threshold(logger::INFO)
+  log_appender(logger::appender_console)
+
+
+  log_formatter(logger::formatter_glue)
+  # to be done better
+  if (params_report$aggr_method  == 'medianPolish'){
+    aggr_method_f <- MsCoreUtils::medianPolish
+  }
+  if (params_report$aggr_method  == 'RobustSummary'){
+    aggr_method_f <-  MsCoreUtils::robustSummary
+  }
+  if (params_report$aggr_method  == 'colMeans'){
+    aggr_method_f <- colMeans
+  }
+  if (params_report$aggr_method  == 'colMeadians'){
+    aggr_method_f <- matrixStats::colMedians
+  }
+  # base protein
+  
+  logfile <- file.path(report_folder, "logfile_qfeat_protein.log")
+  file.create(logfile)  # This will truncate/overwrite the file
+  log_appender(logger::appender_file(logfile ), index = 2)
+ 
+  workflow_steps <- list(
+      step_read_diann,
+      step_import_qfeat_exportonly,
+      step_add_rowdata_precursor,
+      step_filter_na,
+      step_processing_protein,
+      step_add_rowdata_protein,
+      step_add_ensembl
+    )
+    initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f,layer='proteinRS')
+  
+  result <- run_workflow_pipeline(initial_input, workflow_steps)
+
+  log_info("Saving Qfeature obj  in the report folder indicated  ...") 
+  
+  write(as.yaml(params_report), file =  file.path( report_folder, paste0("DIAReport_parameter", ".yaml")))
+
+  saveRDS(result$pe, file.path(report_folder, 'qfeat_.Rds'))
 }

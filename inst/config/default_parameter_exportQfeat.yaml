@@ -1,0 +1,20 @@
+params:
+  input_file: ""
+  design_file: ""
+  Proteotypic: TRUE
+  pep_per_prot: 3
+  nNonZero: 30
+  aggr_method: "medianPolish"
+  normalization: "quantiles"
+  filtering_contaminant: FALSE
+  contaminant_str: ""
+  folder_prj: ""
+  ensembl_annotation: ""
+  ensembl_col: ""
+  quantitative_features: "Precursor.Quantity"
+  filtPerGroup: ''
+  mbr: FALSE
+  wildstr_run: "CMB-"
+  DIANN_ver2: FALSE
+  keep_design_order: FALSE
+  qf_obj: ""

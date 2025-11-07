@@ -30,7 +30,29 @@ step_import_qfeat <- function(input) {
                      "Protein.Group", "Protein.Ids", "Protein.Names", "Genes",
                      "Proteotypic", "First.Protein.Description")
   res <- import2_qfeature(input$dfMsqrob, input$design, params = input$params_report,
-                          min_info_design, diann_colname = diann_colname)
+                          min_info_design, diann_colname = diann_colname , task = 'de')
+  if (res$status == 1) stop(res$error)
+  input$pe <- res$q_feat
+  input
+}
+
+
+#' @author Andrea Argentini
+#' @title  step_import_qfeat_exportonly
+#'
+#' @description
+#' Step function that wraps the import2_qfeature function. It processes input data and
+#' adds the q_feat object to the input list. This is not sanatize the comparisons input 
+#'
+#' @param input A list containing dfMsqrob, design, and params_report.
+#' @return The updated input list with the pe (q_feat) object.
+step_import_qfeat_exportonly <- function(input) {
+  min_info_design <- c("Sample", "Run", "Group", "Replicate")
+  diann_colname <- c("Precursor.Id", "Modified.Sequence", "Stripped.Sequence",
+                     "Protein.Group", "Protein.Ids", "Protein.Names", "Genes",
+                     "Proteotypic", "First.Protein.Description")
+  res <- import2_qfeature(input$dfMsqrob, input$design, params = input$params_report,
+                          min_info_design, diann_colname = diann_colname , task = 'qfeat')
   if (res$status == 1) stop(res$error)
   input$pe <- res$q_feat
   input

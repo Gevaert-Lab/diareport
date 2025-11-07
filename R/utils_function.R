@@ -1305,6 +1305,7 @@ read_DIANN_report <- function( params ){
 #' @param params list of parameters
 #' @param min_col_need_design list of the mandatory fields in EDF file
 #' @param diann_colname columns names
+#' @param task string that indicated if it is for export  qfeat or de analysis
 #' @return status int 0 non error  / 1 error found
 #' @return q_feat q-feature created/ modified
 #' @return error error message
@@ -1316,7 +1317,7 @@ read_DIANN_report <- function( params ){
 #' @importFrom stringr str_detect str_which
 #' @importFrom tibble tibble
 #' @importFrom SummarizedExperiment 'colData<-'
-import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, diann_colname ){
+import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, diann_colname, task ){
 
   is_empty <- function(contrast) {
     return(length(contrast) == 0 || (length(contrast) == 1 && contrast == ''))
@@ -1357,7 +1358,9 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
 
     }
   }
-
+  
+  if (task == 'de'){
+  # needed only for DE and report rendering
   log_info('Check comparisons with EDF ...')
   var2check <- 'Group'
   if (! is_empty(params$confounder_list) ) {
@@ -1369,6 +1372,8 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
     #stop(checkVar_res$error)
     return( list(error= checkVar_res$error, status= checkVar_res$status,q_feat = NULL ))
   }
+    
+   }
 
   #  params$wildstr_run
   log_info('Matching DIANN sample name with  EDF ...')
@@ -1425,7 +1430,7 @@ import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, d
     print(paste("Q-feature err:  ",err))
     return( list(error= err, status= 1,q_feat =NULL ))
   } )
-}
+  }
 
 
 
