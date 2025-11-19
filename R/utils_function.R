@@ -120,7 +120,7 @@ filteringNA_qfeat_ev <- function(pe_ , params, design){
 
 
   tryCatch( expr = {
-
+     #browser()
     if (params$filtPerGroup != '') {
       log_info('filtering per group')
 
@@ -321,7 +321,7 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
     pe_ <- msqrob(object = pe_, i = layer,
                   formula = as.formula( params$formula)  ,ridge = FALSE, overwrite = TRUE)
     contrast_list <- paste0(params$comparisons, "=0")
-
+    #browser()
 
     #coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
     #log_info('Model fitted ...')

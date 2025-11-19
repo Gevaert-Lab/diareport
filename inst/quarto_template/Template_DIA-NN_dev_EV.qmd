@@ -313,12 +313,19 @@ count_precursor <- df %>% dplyr::count(type)
 
 cont_precursor <- ggplot(count_precursor, aes(x = "", y = n, fill = type)) +
   geom_bar(stat = "identity") +
+   scale_fill_manual(values = c(
+    "BOVIN" = "#F8766D",
+    "HUMAN" = "#00BFC4"
+  ))+
   labs(y = "# Precursor", x = "", fill = "Type") 
 
 print(cont_precursor)
 
 plot_perc <- ggplot( d_visual, aes(x= Sample, y = percentage ,fill = Contaminant ) ) +  
   geom_col(position = "stack") +
+   scale_fill_manual(values = c(
+    "BOVIN" = "#F8766D",
+    "HUMAN" = "#00BFC4"))+ 
    scale_x_discrete(guide = guide_axis(angle = 90) )  + ylab("percentage of precursors") 
 
 ggsave(file.path(params$folder_prj,"Result","EV_contaminant_percentage_precursor_intensity.pdf"), 
@@ -483,21 +490,32 @@ htmltools::tagList(plotly_list)
 
 ## EV Protein Marker
 
-In this section, the protein intensities of 8 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1, GAG-EGFP) are summarized for all groups. The large dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$.
+In this section, the protein intensities of 8 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1, GAG-EGFP) are summarized for all groups. The large dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$. If some markers are not showed, it means that they are not identified/ quantified in your experiment. 
 
 ```{r protein_marker}
-
+#| results: asis
 
 marker <- read.csv('ev_marker.tsv', sep=';')	
+p_m <- NULL 
 
+inte_marker <- intersect(marker$Accession , rownames(assay(pe[['proteinRS']])))
+miss_marker <- setdiff( marker$Accession , rownames(assay(pe[['proteinRS']]))   ) 
+#log_info(length(miss_marker))
+#log_info( paste(inte_marker, collapse  =' '))
+if (length(miss_marker) == 8){
+  cat( 'None of EV markers presented in the database have been detected')
+}else{
+  log_info( paste(inte_marker, collapse  =' '))
 
-f <- assay(pe[['proteinRS']])[marker$Accession  , ] %>% as.data.frame() %>% 
+   ## just the the intersection. 
+   f <- assay(pe[['proteinRS']])[inte_marker , ] %>% as.data.frame() %>% 
   tibble::rownames_to_column('protein') %>% 
   left_join( marker %>% select(Accession, Gene) , join_by(protein == Accession )) %>% 
   tidyr::gather( Sample , summarize_intensities ,- Gene, -protein) %>%   
   left_join( colData(pe) %>%  as.data.frame() %>% select(SampleName , Group), join_by(Sample == SampleName ))
+  log_info( paste(dim(f), collapse = ''))
 
- p_m <- ggplot(f, aes(x = Group, y = summarize_intensities, color = Gene, group = Gene)) +
+    p_m <- ggplot(f, aes(x = Group, y = summarize_intensities, color = Gene, group = Gene)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.15), alpha = 0.3, size = 2) +
   stat_summary(
     fun = mean,
@@ -505,13 +523,15 @@ f <- assay(pe[['proteinRS']])[marker$Accession  , ] %>% as.data.frame() %>%
     fun.max = function(x) mean(x) + sd(x),
     geom = "pointrange",
     position = position_dodge(width = 0.1),
-     size = 1
-  ) 
-
-ggplotly(p_m)  
-  
-ggsave(file.path(params$folder_prj,"Result","EV_marker.pdf"), 
+     size = 1) 
+    ggsave(file.path(params$folder_prj,"Result","EV_marker.pdf"), 
        plot = p_m, width = 10.27, height = 11.69, units = "in")
+  }
+l_marker <- list(p_m)
+plotly_mark <- lapply(l_marker, function(p) if (!is.null(p)) ggplotly(p))
+# Remove NULLs (from failed/skipped PCAs)
+plotly_mark <- Filter(Negate(is.null), plotly_mark)
+htmltools::tagList(plotly_mark)
 
 ```
 

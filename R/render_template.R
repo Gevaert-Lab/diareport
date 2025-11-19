@@ -669,10 +669,10 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 
 
   # Prepare aggr_method_f in your input if you want to select it dynamically before running pipeline
- # initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f)
+  # initial_input <- list(params_report = params_report, aggr_method_f = aggr_method_f)
 
   result <- run_workflow_pipeline(initial_input, workflow_steps)
-  
+
   # Find the template file within the package
   template_source_folder <- system.file("quarto_template", package = "diareport")
   if (template_source_folder == "") {
