@@ -50,14 +50,14 @@ devtools::install_github('Gevaert-Lab/diareport')
 
 ## 📂 Quarto Templates Available
 
-The repository contains four Quarto templates:
+The repository contains six Quarto templates:
 
--   `Template_DIA-NN_dev.qmd`: Template for protein-level analysis report
--   `Template_DIA-NN_dev_A.qmd`: Template for protein-level analysis report including Absent-from-DE analysis
--   `Template_DIA-NN_peptide_dev.qmd`: Template for peptide-level analysis reports (No PTMs)
--   `Template_DIA-NN_peptide_dev_A.qmd`: Template for peptide-level analysis reports including Absent-from-DE analysis (No PTMs)
-- `Template_DIA-NN_peptide_dev_EV.qmd`: Template for peptide-level analysis reports for EV experiments
-- `Template_DIA-NN_dev_EV.qmd`: Template for peptide-level analysis reports for EV experiments
+-   `dea_base_protein`: Template for protein-level analysis report
+-   `dea_base_peptide`: Template for precursor-level analysis reports (No PTMs)
+-   `dea_partincluded_protein`: Template for protein-level analysis report including Absent-from-DE analysis
+-   `dea_partincluded_peptide`: Template for precursor-level analysis reports including Absent-from-DE analysis (No PTMs)
+-   `dea_ev_protein`: Template for precursor-level analysis reports for EV experiments
+-   `dea_ev_peptide`: Template for precursor-level analysis reports for EV experiments
 
 Specify the template name via the `template_file` parameter in the `render_dia_report` function
 
@@ -75,7 +75,7 @@ Specify the template name via the `template_file` parameter in the `render_dia_r
 library(diareport)
 
 report_target_folder  <- '../path/UPS_spike'
-template_file = "Template_DIA-NN_dev.qmd"
+template_file = "dea_base_protein"
 output_filename = "Output_report.html"
 
 params <- list(

@@ -58,22 +58,23 @@ validate_folder <- function(report_folder) {
 #' @importFrom assertthat assert_that is.string
 validate_template <- function(template) {
   # Define the list of valid templates
-  valid_templates <- c( "Template_DIA-NN_peptide_dev.qmd",
-                        "Template_DIA-NN_dev.qmd",
-                        "Template_DIA-NN_dev_A.qmd",
-                        "Template_DIA-NN_dev_EV.qmd",
-                        "Template_DIA-NN_peptide_dev_A.qmd",
-                        "Template_DIA-NN_peptide_dev_EV.qmd")
-
+  valid_templates <- list( "dea_base_peptide" ="Template_DIA-NN_peptide_dev.qmd",
+                        "dea_base_protein" = "Template_DIA-NN_dev.qmd",
+                        "dea_partincluded_protein" ="Template_DIA-NN_dev_A.qmd",
+                        "dea_ev_protein" = "Template_DIA-NN_dev_EV.qmd",
+                        "dea_partincluded_peptide" = "Template_DIA-NN_peptide_dev_A.qmd",
+                        "dea_ev_peptide" = "Template_DIA-NN_peptide_dev_EV.qmd")
   # Check if template is a string
   assertthat::assert_that(assertthat::is.string(template), msg = "template must be a string.")
 
   # Check if template belongs to the list of valid templates
-  if (!template %in% valid_templates) {
-    stop("Invalid template. The template must be one of the following: ", paste(valid_templates, collapse = ", "))
+  if (!template %in% names(valid_templates)) {
+    stop("Invalid template. The template must be one of the following: ", paste( names(valid_templates), collapse = ", "))
+  }else{
+    return (valid_templates[template])
   }
 
-  TRUE
+  
 }
 
 
@@ -513,7 +514,8 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
   # Validate parameters
 
 
-  validate_template( template)
+  temp_ <-validate_template( template)
+  template <- temp_
   validate_folder(report_folder)
   validate_filename( filename = report_filename)
 
@@ -717,7 +719,6 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
     params_report$part_value <-   file.path(temp_work_dir,basename(template_source_folder),'part_value.RDS'  )
 
   }
-
   #  before only path now :  quarto_args = c("--output-dir", file.path(path, "out")
   path <- file.path(temp_work_dir, basename(template_source_folder))
 

@@ -118,7 +118,7 @@ filteringNA_qfeat_ev <- function(pe_ , params, design){
   temp_l <- pe_[["precursor"]]
   pe_ <- QFeatures::addAssay(pe_, temp_l, name = "precursor_")
 
-
+  
   tryCatch( expr = {
      #browser()
     if (params$filtPerGroup != '') {
@@ -215,6 +215,7 @@ filteringNA_qfeat_ev <- function(pe_ , params, design){
 #' @importFrom QFeatures filterFeatures VariableFilter
 #'
 filteringNA_qfeat <- function(pe_ , params, design){
+  #browser()
   group_val <- design %>% distinct(Group) %>%
     arrange(Group) %>%  pull()
   error <- ''
@@ -317,11 +318,10 @@ msqrob_model <- function(pe_, params, layer, ev_ann  ){
 
 
   tryCatch( expr = {
-    
     pe_ <- msqrob(object = pe_, i = layer,
                   formula = as.formula( params$formula)  ,ridge = FALSE, overwrite = TRUE)
     contrast_list <- paste0(params$comparisons, "=0")
-    #browser()
+    
 
     #coef <- rowData(pe_[[layer]])$msqrobModels[[1]] %>% getCoef %>% names
     #log_info('Model fitted ...')
@@ -442,7 +442,7 @@ partially_present <- function( pe_, params , layer ){
     if (layer == 'proteinRS'){
       rownames(final)  <- final$Protein.Ids
     }else{
-      rownames(final)  <- final$Stripped.Sequence
+      rownames(final)  <- final$Precursor.Id
     }
     log_info( paste(filt_val,collapse = ' '))
     #print(final %>% head())
@@ -452,7 +452,7 @@ partially_present <- function( pe_, params , layer ){
     ## only the selected Id.
     log_info(paste0('Selecting Partial Analysis Values ',cmp))
 
-    matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val]
+    matrix_list[[length(matrix_list) + 1]] <-  assay(pe_[[layer]])[rownames(final),filt_val, drop = FALSE]
 
   }
   names(part_list) <-  params$comparison_label
@@ -1561,7 +1561,6 @@ checkVariables <- function(inputParams, dfDesign, variables) {
   extractedValues <- unique(extractedValues)
 
   for (variable in variables) {
-
     extracted <- gsub(variable, "", extractedValues[grepl(variable, extractedValues,ignore.case = TRUE)], ignore.case = TRUE)
     log_info(paste0(extracted, collapse = ' '))
     # Check if the extracted values are present in the corresponding column in dfDesign
