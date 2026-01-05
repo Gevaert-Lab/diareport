@@ -13,26 +13,24 @@ The statistical analysis is powered by the **MSqrob2** and **QFeatures** package
 
 1.  **Install R  version >= 4.4.0**   
 
-2.  **Install Bioconductor:** ` install.packages("BiocManager")`
-
-2.  **Install PhantomJS:** ` webshot::install_phantomjs()`
-
-3.  **Install devtools:** `install.packages("devtools")`
-
-4.  **Install Quarto:**
-
-    Follow the instructions on the [Quarto website](https://quarto.org/docs/download/).
-
-5. **Install Bioconductor dependencies**   
+2.  **Install Bioconductor dependencies**   
     ``` r 
         if (!requireNamespace("BiocManager", quietly = TRUE))
             install.packages("BiocManager")
  
         BiocManager::install(c("QFeatures", "SummarizedExperiment", "MsCoreUtils", "msqrob2"))
     ```
+3.  **Install PhantomJS:** ` webshot::install_phantomjs()`
+
+4.  **Install devtools:** `install.packages("devtools")`
+
+5.  **Install Quarto:**
+
+    Follow the instructions on the [Quarto website](https://quarto.org/docs/download/).
+
 ------------------------------------------------------------------------
 
-## 🛠 How to Install the R Package
+## 🛠 How to Install the diareport Package
 
 **For development use:**
 
@@ -40,7 +38,7 @@ The statistical analysis is powered by the **MSqrob2** and **QFeatures** package
 
 2.  Use `devtools::install()` to install the diareport package on your system.
 
-**To test the R package:**
+**For end user:**
 
 ``` r
 devtools::install_github('Gevaert-Lab/diareport')
@@ -56,14 +54,19 @@ The repository contains six Quarto templates:
 -   `dea_base_peptide`: Template for precursor-level analysis reports (No PTMs)
 -   `dea_partincluded_protein`: Template for protein-level analysis report including Absent-from-DE analysis
 -   `dea_partincluded_peptide`: Template for precursor-level analysis reports including Absent-from-DE analysis (No PTMs)
--   `dea_ev_protein`: Template for precursor-level analysis reports for EV experiments
--   `dea_ev_peptide`: Template for precursor-level analysis reports for EV experiments
+-   `dea_ev_protein`: Template for precursor-level analysis reports for Extra Vesicles (EV) experiments
+-   `dea_ev_peptide`: Template for precursor-level analysis reports for Extra Vesicles (EV) experiments
 
 Specify the template name via the `template_file` parameter in the `render_dia_report` function
 
 ------------------------------------------------------------------------
 
-## 🚀 How to Run an Analysis
+## 🚀 How to Run an Analysis: Base Protein Report ( `dea_base_protein`)
+
+**Important:**  
+The output folder must be writable. The function does not overwrite existing
+reports unless explicitly allowed; if a file with the same name already exists,
+rendering will fail.
 
 1.  Download [DIA_data.zip](https://raw.githubusercontent.com/Gevaert-Lab/DIA-Report/main/example_report/DIA_data.zip), which includes the DIA-NN report and EDF file from [Staes, An, et al.](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00048?ref=PDF).
 2.  Unzip it into a folder called `../path/DIA_data/`.
@@ -109,6 +112,62 @@ render_dia_report(params, template_file, report_target_folder, output_filename)
 ```
 
 ------------------------------------------------------------------------
+
+
+## 🚀 How to Run an Analysis: EV Protein Report ( `dea_ev_protein`)
+
+
+1. Extra Vesicle Proteomics experiments is included in the package  [Pauwels et al.](https://doi.org/10.1002/jev2.70103).
+
+The EV dataset shipped with the package is provided for demonstration and vignette purposes only.
+
+**Remark:**  Always use the *full path* to indicate a folder or file.
+**Note:** Ensure `report_target_folder` is writable and does not already contain
+an `EV_report.html` file.
+
+``` r
+library(diareport)
+
+report_target_folder  <- 'your_path/EV_proteomics'
+template_file = "dea_ev_protein"
+output_filename = "EV_report.html"
+
+params <- list(
+  title =  "EV Proteomics: Sample Preparation Comparison Methods",
+  subtitle = 'DE Analysis',
+  author= 'Your Name',
+  description= 'Same EV material prepared with different protocols: ultracentrifugation (UC) and ultrafiltration with 96-well plate (UF96)',
+  input_file =  system.file("extdata/input_data/report.parquet", package = "diareport"),
+  design_file = system.file("extdata/input_data/experiment_design.csv", package = "diareport"),
+  folder_prj = report_target_folder,
+  contrast= 'Group',
+  aggr_method= 'medianPolish',
+  normalization ='center.median',
+  formula = '~ -1 + Group',
+  Proteotypic = TRUE,
+  pep_per_prot= 2,
+  nNonZero= 30,
+  FC_thr = 1,
+  comparisons= c('GroupUF96 - GroupUC'),
+  quantitative_features= 'Precursor.Quantity',
+  filtPerGroup= 'at_least_one',
+  wildstr_run = 'CMB-',
+  mbr= TRUE,
+  DIANN_ver2= TRUE,
+  comparison_label  = c('UF96 - UC'),
+  filtering_contaminant = TRUE,
+  contaminant_str = '_BOVIN',
+  filt_NaNDE = FALSE
+)
+
+# To run the analysis:
+render_dia_report(params, template_file, report_target_folder, output_filename)
+```
+
+*Remark*: The fully rendered  HTML report is available online: https://cloud.cmb.ugent.be/index.php/s/a2rgtEHTe5EWCQP
+
+------------------------------------------------------------------------
+
 
 ## ⚙️ Input Parameters
 

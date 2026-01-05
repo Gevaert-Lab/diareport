@@ -441,6 +441,7 @@ validate_params <- function(params) {
 #' @title merge_default_parameters
 #'
 #' @param params_int parameters
+#' @param flag_str flag string to switch between report (rep) or qfeature (qfeat)
 #' @return merged parameters
 #' @importFrom yaml read_yaml
 
@@ -822,11 +823,6 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
 #' @importFrom MsCoreUtils medianPolish robustSummary
 #' @importFrom matrixStats colMedians
 #' @importFrom logger log_info log_threshold log_appender log_formatter INFO appender_console appender_file
-#' @importFrom yaml write
-
-#'
-#' @seealso
-#' \code{\link{run_workflow_pipeline}}, \code{\link{QFeatures::QFeatures}}
 #'
 #' @examples
 #' \dontrun{

@@ -1625,6 +1625,7 @@ check_dependencies = function(required_packages = required_packages){
 #' @return a list containing:
 #' \item{flag}{logical; TRUE if the formula contains disallowed terms, FALSE otherwise}
 #' \item{problematic_terms}{character vector of the terms that are disallowed, or NULL if none}
+#' @importFrom stats terms
 #' @export
 
 flag_complex_formula <- function(formula) {

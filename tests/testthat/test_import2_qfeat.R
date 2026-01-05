@@ -21,7 +21,7 @@ test_that("qfeat_base", {
 
    L <- readLines(params$design_file, n = 1)
    if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-   out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+   out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ , task='de' )
   # Perform the tests
   #print(import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = lst_wide_columns  )$error)
   expect_equal(out$status,0) # Ensure the data is loaded
@@ -51,7 +51,7 @@ test_that("qf_run_name_wrong", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ ,task='de' )
   # Perform the tests
   #print(import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = lst_wide_columns  )$error)
   expect_equal(out$status,1) # Ensure the data is loaded
@@ -78,7 +78,7 @@ test_that("qf_run_less_sample_design", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ ,task = 'de' )
   # Perform the tests
   #print(import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = lst_wide_columns  )$error)
   expect_equal(out$status,0) # Ensure the data is loaded
@@ -109,7 +109,7 @@ test_that("qf_run_less_sample_diann", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__, task='de'  )
   # Perform the tests
   expect_equal(out$status,1) # Ensure the data is loaded
 
@@ -129,7 +129,7 @@ test_that("qf_wrong_confounder", {
                  "Protein.Ids","Protein.Names","Genes","Proteotypic","First.Protein.Description")
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv(params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ ,task= 'de' )
   expect_equal(out$status,1)
   #expect_equal(out$error, 'confounder values are not present in design file')
 } )

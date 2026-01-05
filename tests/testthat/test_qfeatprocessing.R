@@ -23,7 +23,7 @@ test_that("addrow_information", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ , task= 'de' )
   g <- add_rowdata_detection(out$q_feat,  design , assay = 'precursor' )
 
   # Perform the tests
@@ -56,7 +56,7 @@ test_that("filteringNA_qfeat", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ , task= 'de' )
 
   g <- add_rowdata_detection(out$q_feat,  design , assay = 'precursor' )
   res_filt  <-  filteringNA_qfeat(pe_ = g, params, design)
@@ -90,7 +90,7 @@ test_that("procesProtein_qfeat", {
   #
   L <- readLines(params$design_file, n = 1)
   if (grepl(";", L)) design <- read.csv2(params$design_file) else design <- read.csv( params$design_file)
-  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__  )
+  out <- import2_qfeature (dfMsqrob, design, params, min_col_need_design, diann_colname = colname__ , task= 'de' )
 
   g <- add_rowdata_detection(out$q_feat,  design , assay = 'precursor' )
   res_filt  <-  filteringNA_qfeat(pe_ = g, params, design)

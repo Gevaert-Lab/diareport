@@ -1,0 +1,388 @@
+---
+title: "diareport: How to use it"
+author: "A.Argentini (VIB–UGent Center for Medical Biotechnology, Ghent, Belgium, andrea.argentini@vib-ugent.be)"
+package: diareport
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+vignette: >
+  %\VignetteIndexEntry{diareport: How to use it}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(dplyr)
+library(diareport)
+```
+
+# Introduction
+
+This vignette describes the use of diareport, an R package for performing differential expression (DE) analysis and generating interactive reports from DIA-NN output within a unified workflow.
+
+To illustrate the functionality of the package, we analyze an extracellular vesicle (EV) proteomics dataset from [Pauwels et al.](https://doi.org/10.1002/jev2.70103). 
+All input files required to reproduce the analysis presented in this vignette are available in the vignette data directory (see `inst/extdata`)
+
+diareport supports three report templates: `dea_base`, `dea_partincluded`, and `dea_ev`.
+In this vignette, we focus on the `dea_ev` report template at the protein level, which is specifically designed for EV proteomics applications.
+The remaining report types are described in subsequent sections.
+
+## Workflow overview
+
+The `diareport` workflow consists of the following steps:
+
+1. Prepare DIA-NN output files
+2. Define the experiment design file (EDF)
+3. Specify analysis parameters
+4. Run the report generation
+5. Inspect the interactive HTML report and exported results
+
+## DIA-NN output files
+diareport supports both legacy quantitative reports generated with DIA-NN versions earlier than 2.0 and the Parquet-based reports produced by more recent versions
+When using parquet input files, diareport expects the corresponding `report.protein_description.tsv` file to be present in the same directory. 
+If this file is missing, an error is raised.
+
+In our EV dataset, the input data directory is structured as follows: 
+
+```{r}
+library(fs)
+input_dir <- system.file(
+  "extdata", "input_data",
+  package = "diareport")
+cat(dir_tree( input_dir))
+```
+## Experiment Design File (EDF)
+This CSV file describes the design of your experiment. The following columns must be present:
+
+-   **Sample**: Sample name (used in all plots, should be meaningful and not too long)
+-   **Run**: Raw file name *without file extension (mzML/.d/.raw)*
+-   **Group**: Groups in the experiment (e.g., Cancer/control, mutation/WT)
+-   **Replicate**: Label for the sample replicates
+
+Below is the `experiment_design.csv` file used for the EV proteomics dataset.
+
+```{r}
+design <-read.csv( file.path(input_dir,'experimental_design.csv'))
+
+knitr::kable(
+  head(design, 10),
+  format = "html",
+  caption = "Experiment design file"
+)
+```
+Regarding our experiment, the same EV sample was prepared using two different sample preparation methods: ultracentrifugation (UC) and ultrafiltration with 96-well plate (UF).
+The goal of this comparison is to assess which protocol improves protein detection and overall data quality in EV proteomics.
+
+Each group consists of four technical replicates, as indicated in the **Replicate** column of the EDF.
+
+If additional variables are available (e.g., age, BMI, or batch), they can be easily added as extra columns in the EDF and included in the statistical model.
+For example, if batch information is available, it can be incorporated into the analysis by specifying an appropriate design formula.
+```{r rr}
+design_mod <- design %>% mutate (Batch = c('Batch1','Batch2', 'Batch1','Batch2', 'Batch1','Batch2'))
+knitr::kable(
+  head(design_mod, 10),
+  format = "html",
+  caption = "Experiment design file with Batch information"
+)
+
+```
+This is the same EDF file, with an additional column specifying batch information, which is correctly parsed by diareport. To include Batch as a confounder in the statistical model, set the parameter
+*confounder_list = c("Batch")*.
+
+Differential expression analysis corrected for batch effects can then be performed by specifying the model formula:
+*~ Group + Batch*.
+
+## Run the DE analysis and generate the report
+
+To run the differential expression analysis and generate the analysis report for the EV experiment of interest, you can use the following code.
+Make sure to update the file paths according to your local setup.
+
+```{r  run_report, eval = FALSE, echo = TRUE }
+
+report_target_folder  <- 'your_path/EV_proteomics'
+template_file = "dea_ev_protein"
+output_filename = "EV_report.html"
+
+params <- list(
+  title =  "EV Proteomics: Sample Preparation Comparison Methods",
+  subtitle = 'DE Analysis',
+  author= 'Your Name',
+  description= 'Same EV material prepared with different protocols: ultracentrifugation (UC) and ultrafiltration with 96-well plate (UF96)',
+  input_file =  system.file("extdata/input_data/report.parquet", package = "diareport"),
+  design_file = system.file("extdata/input_data/experiment_design.csv", package = "diareport"),
+  folder_prj = report_target_folder,
+  contrast= 'Group',
+  aggr_method= 'medianPolish',
+  normalization ='center.median',
+  formula = '~ -1 + Group',
+  Proteotypic = TRUE,
+  pep_per_prot= 2,
+  nNonZero= 30,
+  FC_thr = 1,
+  comparisons= c('GroupUF96 - GroupUC'),
+  quantitative_features= 'Precursor.Quantity',
+  filtPerGroup= 'at_least_one',
+  wildstr_run = 'CMB-',
+  mbr= TRUE,
+  DIANN_ver2= TRUE,
+  comparison_label  = c('UF96 - UC'),
+  filtering_contaminant = TRUE,
+  contaminant_str = '_BOVIN',
+  filt_NaNDE = FALSE
+)
+
+# To run the analysis:
+render_dia_report(params, template_file, report_target_folder, output_filename)
+```
+
+This will run the differential analysis and it will render an HTML report in the *report_target_folder* specified.
+
+### Structured output 
+If you check in your output folder, you will have the follwing structure with the following.
+
+```text
+> cat(dir_tree("your_path/EV_proteomics"))
+your_path/EV_proteomics/
+├── DIAReport_parameter_date.yaml
+├── EV_report.html
+├── logfile_protein.log
+└── Result
+    ├── Contrast
+    │   └── UF96 - UC
+    │       ├── Boxplot_DE_proteins.pdf
+    │       ├── Exclusive_protein_notinDE.csv
+    │       ├── P_val_Distribution_.pdf
+    │       ├── Toptable.csv
+    │       └── Volcano.pdf
+    ├── EV_contaminant_percentage_precursor_intensity.pdf
+    ├── EV_marker.pdf
+    ├── EV_protein_annotated_counts.pdf
+    ├── PCA by Group.pdf
+    └── qfeat_experiment.Rds
+```
+At the top level of the output directory, you will find the HTML report, a log file, and a YAML file containing the parameters used to generate the report. 
+The *Result* folder contains most of the plots shown in the report, exported as PDF files, along with the QFeatures objects that store all analysis results and can be used for custom visualizations or further inspection.
+
+In addition, a dedicated subfolder is created for each comparison. Each subfolder contains the differential expression results table exported as a CSV file, as well as the corresponding volcano plot and boxplots of the top 20 differentially expressed proteins, both exported as PDF files.
+
+## `diareport` parameters
+Users can typically run diareport using the default parameters.
+The sections below describe the most commonly customized options.
+
+### Report Customization and Input data
+```{r  s,  eval = FALSE, echo = TRUE}
+params <- list(
+  # other parameters...
+  title =  "EV Proteomics: Sample Preparation Comparison Methods",
+  subtitle = 'DE Analysis',
+  author= 'Your Name',
+  description= 'Same EV material prepared with different protocols: ultracentrifugation (UC) and ultrafiltration with 96-well plate (UF96)',
+  input_file= '../path/input_data/report.parquet',
+  design_file = '../path/input_data/experiment_design.csv',
+  folder_prj = report_target_folder,
+  wildstr_run = 'CMB-',
+   # other parameters...
+  )
+```
+The *title*, *subtitle*, and *description* parameters customize the report header and summary text.
+The *input_file* and *design_file specify* the paths to the DIA-NN report (TSV or Parquet) and the experiment design file (EDF); absolute paths are recommended.
+
+The wildstr_run parameter defines a string pattern present in all raw file names and is used to correctly map DIA-NN files to the EDF annotations.
+
+### DIA-NN options
+In case you have applied matching between runs (MBR) in DIA-NN, you can set *mbr= TRUE* so the diareport will filter the precursors based on the right q-value columns.
+The `quantitative_features` parameter defines the type of quantitative values retrieved from the DIA-NN report. At the moment, only 'Precursor.Quantity' is supported.
+
+```{r , eval = FALSE, echo = TRUE }
+params <- list(
+  # other parameters...
+  mbr= TRUE, 
+  quantitative_features= 'Precursor.Quantity',
+  # other parameters...
+  )
+```
+
+### Filtering missing values & contaminants
+
+```{r , eval = FALSE, echo = TRUE }
+params <- list(
+  # other parameters...
+  filtPerGroup= 'at_least_one', 
+  nNonZero= 30,
+  Proteotypic = TRUE,
+  pep_per_prot= 2,
+   # other parameters...
+  )
+```
+diareport computes the percentage of detection for each precursor, defined as the number of non-missing values divided by the total number of samples within each experimental group (in our case, UC and UF96).
+
+The parameter nNonZero specifies the minimum required detection percentage (e.g. 30%) and can be applied according to three strategies controlled by filtPerGroup: requiring the threshold to be met in all groups (filtPerGroup = "all"), in at least one group (filtPerGroup = "at_least_one"), or across all samples irrespective of group assignment (filtPerGroup = "").
+Optionally, users can restrict the analysis to proteotypic precursors only by setting Proteotypic = TRUE. 
+Proteotypicity information is directly retrieved from the DIA-NN report. 
+
+Including both proteotypic and non-proteotypic precursors can be beneficial, particularly in proteogenomics experiments where the sequence database may contain cryptic peptides or protein isoform sequences.
+Users can also select the minimum number of precursors per protein with **pep_per_prot**.
+
+To remove contaminant sequences present in the protein database, specify the string used to identify contaminants. In this EV dataset, contaminants correspond
+to bovine proteins.
+
+```{r , eval = FALSE, echo = TRUE }
+params <- list(
+  # other parameters...
+  filtering_contaminant = TRUE,
+  contaminant_str = '_BOVIN',
+   # other parameters...
+  )
+```
+
+If additional protein annotations are required beyond those provided in the DIA-NN report, users can supply an external annotation file as follows:
+```{r , eval = FALSE, echo = TRUE }
+params <- list( 
+ # other parameters...
+ ensembl_annotation= "path/ensemble_notation_export.csv",
+  ensembl_col= c("chromosome_name",'ensembl_gene_id'),
+   # other parameters...
+   )
+```
+The annotation file must be a CSV exported from Ensembl (e.g. via BioMart) and must contain the column hgnc_symbol, which is used to match entries to the gene names reported by DIA-NN.
+All columns specified in ensembl_col are appended to the rowData of the QFeatures object and are subsequently available throughout the workflow. These annotations are also displayed in the HTML report, including in the differential expression result tables and volcano plots.
+
+All these filtering steps are performed at the precursor level prior to normalization across samples.
+
+### Normalization and summarization
+
+```{r , eval = FALSE, echo = TRUE }
+params <- list(
+  # other parameters...
+  aggr_method= 'medianPolish',
+  normalization ='center.median',
+   # other parameters...
+  )
+```
+The normalization parameter specifies the method applied across all samples at the precursor level after log transformation. Supported methods include:
+*[sum, max, center.mean, center.median, div.mean, div.median, diff.median, quantiles, quantiles.robust, vsn]*.
+
+The aggregation function used to summarize precursor intensities to the protein level is defined by aggr_method. Supported options are:
+*[medianPolish, robustSummary(), colMeans(), colMedians(), base::colSums()].*
+
+In practice, *medianPolish* and *robustSummary()* are the most commonly used aggregation methods. These approaches yield comparable results, although medianPolish generally has a lower computational cost.
+
+### Differential expression model 
+
+```{r , eval = FALSE, echo = TRUE }
+params <- list(
+  # other parameters...
+  formula= '~ -1 + Group ',
+  comparisons= c('GroupUF96 - GroupUC'),
+  comparison_label  = c('UF96 - UC'),
+  FC_thr = 1,
+  adjpval_thr = 0.05 
+   # other parameters...
+  )
+```
+The formula parameter defines the linear model used for differential expression analysis. It must be specified using standard R formula syntax and should include the variables defined in the experiment design file (EDF). In this example, the model is defined as ~ -1 + Group, which fits separate coefficients for each level of the Group variable without an intercept.
+The comparisons parameter specifies the contrasts to be evaluated and displayed in the report. 
+Each comparison must be expressed using the variable name (Group) and its corresponding levels, as defined in the EDF. Multiple contrasts can be provided, allowing users to perform and visualize several differential comparisons within a single analysis.
+The comparison_label parameter defines human-readable labels for each contrast, which are used in the report figures and tables. 
+Thresholds for fold change (FC_thr) and adjusted p-value (adjpval_thr) are applied to highlight statistically significant features in the differential expression results.
+
+For more advanced analyses, additional variables such as technical or biological confounders can be included in the model. 
+For example, if batch information is available in the EDF, batch effects can be accounted for by specifying: *~ -1 + Group + Batch*.
+
+In this case, differential expression is estimated for the Group variable while adjusting for systematic variation associated with Batch. The comparisons parameter should still reference only the Group coefficients (e.g. GroupUF96 - GroupUC), as confounder terms are included solely to correct the model and are not directly contrasted.
+This flexible formulation allows diareport to support both simple and more complex experimental designs while maintaining a consistent reporting structure.
+
+
+## Report generated 
+The EV report template (`dea_ev`) generated by diareport contains the following sections:
+**missing-value diagnostics**, **completeness summaries**, **principal component analysis (PCA)**,
+**contaminant analysis**, **EV marker panels**, and **differential expression results**.
+
+Each comparison is presented in a dedicated tab containing a volcano plot, a heatmap, and an interactive
+results table. In addition, features detected exclusively in one experimental condition are highlighted.
+
+A fully rendered example HTML report is available online:
+https://cloud.cmb.ugent.be/index.php/s/a2rgtEHTe5EWCQP
+
+
+## Export only the `QFeatures` object (skip differential expression analysis)
+
+In cases where users wish to run the preprocessing workflow without performing differential expression
+analysis, the `create_qfeat_obj()` function can be used. This function performs the following steps:
+
+1. Filters the data according to the specified filtering parameters
+2. Aggregates precursor intensities to the protein level
+3. Saves a `QFeatures` object in the output directory
+
+The file paths shown below are placeholders and should be adapted to the local setup.
+
+```{r  run_create_obj, eval = FALSE, echo = TRUE }
+report_target_folder  <- 'your_path/EV_proteomics'
+
+params <- list(
+  
+  input_file= system.file("extdata/input_data/report.parquet", package = "diareport"),
+  design_file = system.file("extdata/input_data/experiment_design.csv", package = "diareport"),
+  folder_prj = report_target_folder,
+  aggr_method= 'medianPolish',
+  normalization ='center.median',
+  pep_per_prot= 2,
+  nNonZero= 30,
+  FC_thr = 1,
+  filtPerGroup= 'at_least_one',
+  wildstr_run = 'CMB-',
+  mbr= TRUE,
+  DIANN_ver2= TRUE,
+  filtering_contaminant = TRUE,
+  contaminant_str = '_BOVIN',
+)
+
+# To save the QFeatures obj. 
+create_qfeat_obj(params,  report_folder = report_target_folder)
+```
+In this case the output folder will contain:
+
+```text
+> cat(dir_tree("your_path/EV_proteomics"))
+your_path/EV_proteomics/
+├── DIAReport_parameter.yaml
+├── logfile_protein.log
+└── qfeat_experiment.Rds
+```
+
+
+### Inspect the `QFeatures` object
+The QFeatures created by diareport contains the following layers: 
+
+```text
+> pe <- readRDS('your_path/EV_proteomics/Result/qfeat_experiment.Rds')
+> pe
+An instance of class QFeatures containing 5 set(s):
+ [1] precursor: SummarizedExperiment with 20553 rows and 6 columns 
+ [2] precursor_: SummarizedExperiment with 22813 rows and 6 columns 
+ [3] precursorLog: SummarizedExperiment with 20553 rows and 6 columns 
+ [4] precursorNorm: SummarizedExperiment with 20553 rows and 6 columns 
+ [5] proteinRS: SummarizedExperiment with 2269 rows and 6 columns
+```
+
+Each layer is a `SummarizedExperiment` object and contains the following data:
+
+- **precursor** : all precursor raw intensities (after all the filtering steps)
+- **precursor_** : all precursor raw intensities , including the contaminants (This is available only for the EV analysis)
+- **precursorLog** : all precursor intensities log base 2 transformed 
+- **precursorNorm** : all precursor intensities normalized
+- **proteinRS** : all  protein intensities after summarization
+
+When running `render_dia_report()`, the **proteinRS** layer additionally contains
+the differential expression results generated using `msqrob2`.
+
+## Session Info
+```{r session_info }
+sessionInfo()
+```

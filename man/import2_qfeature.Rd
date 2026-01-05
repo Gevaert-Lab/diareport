@@ -9,7 +9,8 @@ import2_qfeature(
   design,
   params,
   min_col_need_design,
-  diann_colname
+  diann_colname,
+  task
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ import2_qfeature(
 \item{min_col_need_design}{list of the mandatory fields in EDF file}
 
 \item{diann_colname}{columns names}
+
+\item{task}{string that indicated if it is for export  qfeat or de analysis}
 }
 \value{
 status int 0 non error  / 1 error found

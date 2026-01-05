@@ -63,9 +63,6 @@ create_qfeat_obj(params, "output_folder")
 }
 
 }
-\seealso{
-\code{\link{run_workflow_pipeline}}, \code{\link{QFeatures::QFeatures}}
-}
 \author{
 Andrea Argentini
 }

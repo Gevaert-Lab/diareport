@@ -8,6 +8,8 @@ merge_default_parameters(params_int, flag_str = "rep")
 }
 \arguments{
 \item{params_int}{parameters}
+
+\item{flag_str}{flag string to switch between report (rep) or qfeature (qfeat)}
 }
 \value{
 merged parameters
