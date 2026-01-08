@@ -1,8 +1,8 @@
-# 🎯 diareport R Package — Version of DIA-Report
+# 🎯 diareport R Package
 
-Welcome to **DIA-Report** — your ultimate companion for differential expression (DE) reports on DIA proteomics data. 🧑‍🔬🔬
+Welcome to **DiaReport** — your ultimate companion for differential expression (DE) reports on DIA proteomics data. 🧑‍🔬🔬
 
-With **DIA-Report**, you can generate advanced differential expression analysis reports based on **DIA-NN results** with just one magical command. ✨
+With **DiaReport**, you can generate advanced differential expression analysis reports based on **DIA-NN results** with just one magical command. ✨
 
 The statistical analysis is powered by the **MSqrob2** and **QFeatures** packages, enabling you to filter your data with various parameters and perform differential expression on proteomics data. The broad selection of parameters allows you to customize the analysis to your needs (normalization methods, missing value filtering, aggregation methods) and avoid reliance on black-box statistical methods. 🎛️🧪
 
