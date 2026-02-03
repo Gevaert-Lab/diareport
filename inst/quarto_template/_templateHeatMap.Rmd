@@ -4,6 +4,15 @@
 
 library(dplyr)
 library(heatmaply)
+library(htmlwidgets)
+library(webshot2)
+
+docker_save_pdf <- function(widget, filename, width = 950, height = 900) {
+  temp_h <- tempfile(fileext = ".html")
+  htmlwidgets::saveWidget(widget, temp_h, selfcontained = TRUE)
+  webshot2::webshot(url = temp_h, file = filename, vwidth = width, vheight = height)
+  unlink(temp_h) # Clean up the temp html
+}
 
 
 log_info('Heatmap Visual for proteins ...')
@@ -28,12 +37,19 @@ if (dim(data)[1] > 5) {
   #log_info('Plotting HEatmap')
   #log_info("{paste(dim(data), collapse = '\n')}")
   
-  heatmaply::heatmaply(data, scale = "none" , 
-                  dendrogram =  "none", width = 1000 , height =900 , 
-                  widget_id = paste0("heatmap_", sample.int(1e6, 1)),
-                  file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")), 
-                  cexRow = 1 )
+  # heatmaply::heatmaply(data, scale = "none" , 
+  #                 dendrogram =  "none", width = 1000 , height =900 , 
+  #                 widget_id = paste0("heatmap_", sample.int(1e6, 1)),
+  #                 file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")), 
+  #                 cexRow = 1 )
+
+  p <- heatmaply::heatmaply(data, scale = "none", 
+    dendrogram = "none", 
+    widget_id = paste0("heatmap_", sample.int(1e6, 1)),
+    cexRow = 1, cexCol = 0.8)
     
+   docker_save_pdf(p, file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+
   #   
   # tmp <- heatmaply::heatmaply(data, scale = "column",  dendrogram = "none",cexRow = 1, file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
   #   rm(tmp)

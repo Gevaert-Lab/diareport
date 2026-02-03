@@ -62,7 +62,7 @@ params:
 #source('utils_function.R')
 
  required_packages = c('QFeatures',"ggrepel","tidyr",
-                       "plotly","DT","MSnbase",'gridExtra','dplyr','stringr' ,"UpSetR",'logger','pander','heatmaply','GGally','yaml')
+                       "plotly","DT","MSnbase",'gridExtra','dplyr','stringr' ,"UpSetR",'logger','pander','heatmaply','GGally','yaml','webshot2','htmlwidgets')
 # #print(required_packages)
  diareport::check_dependencies(required_packages)
 

@@ -3,6 +3,15 @@
 ```{r}
 library(dplyr)
 library(heatmaply)
+library(htmlwidgets)
+library(webshot2)
+
+docker_save_pdf <- function(widget, filename, width = 950, height = 900) {
+  temp_h <- tempfile(fileext = ".html")
+  htmlwidgets::saveWidget(widget, temp_h, selfcontained = TRUE)
+  webshot2::webshot(url = temp_h, file = filename, vwidth = width, vheight = height)
+  unlink(temp_h) # Clean up the temp html
+}
 
 
 log_info('Inside Partial visualization ...')
@@ -33,11 +42,23 @@ write.csv2(part_table, file= file.path(path,paste0("Exclusive_protein_notinDE","
     #log_info(file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
 if (dim(part_int)[1] < 50 ){
      log_info(paste(dim(part_int),collapse = ' ' ))
-    heatmaply::heatmaply(part_int, scale = "none" , 
-    dendrogram =  "none", 
+
+
+    # heatmaply::heatmaply(part_int, scale = "none" , 
+    # dendrogram =  "none", 
+    # widget_id = paste0("heatmap_", sample.int(1e6, 1)),
+    # width = 1200 , height =900 ,   
+    # cexRow = 1, cexCol = 0.8 , file =  file.path(path,paste0("Exclusive_protein_Heatmap_",".pdf")))   
+
+     p <- heatmaply::heatmaply(part_int, scale = "none", 
+    dendrogram = "none", 
     widget_id = paste0("heatmap_", sample.int(1e6, 1)),
-    width = 1200 , height =900 ,   
-    cexRow = 1, cexCol = 0.8 , file =  file.path(path,paste0("Exclusive_protein_Heatmap_",".pdf")))   
+    cexRow = 1, cexCol = 0.8)
+    
+   docker_save_pdf(p, file.path(path,paste0("Exclusive_protein_Heatmap_",".pdf")))
+   
+   p
+
     }else{
     cat ('Too many precursor / protein for heatmap visualization')
 }
