@@ -45,7 +45,7 @@ data <-  assay(pe[["peptideNorm"]])[selected,sample_rel]
    docker_save_pdf(p,  file.path(path,paste0("Heatmap_DE_proteins",".pdf"))) 
     
   } else {
-    cat ('Not enough DE peptides (OR) Too many DE peptides for heatmap visualization')
+    cat ('Not enough DE peptides (OR) Too many DE precursors for heatmap visualization')
 }
 
 

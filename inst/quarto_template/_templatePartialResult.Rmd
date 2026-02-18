@@ -60,7 +60,7 @@ if (dim(part_int)[1] < 50 ){
    p
 
     }else{
-    cat ('Too many precursor / protein for heatmap visualization')
+    cat ('Too many precursors / proteins for heatmap visualization')
 }
 
  

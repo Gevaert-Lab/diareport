@@ -24,8 +24,8 @@ summary <- do.call(rbind, lapply(pVals, function(p) {
     down <- filterDOWN(DE, f, p)
     return(data.frame("logFC" = f, 
                       "adjPval" = p, 
-                      "upRegulated" = up, 
-                      "downRegulated" = down))
+                      "upregulated" = up, 
+                      "downregulated" = down))
   }))
 }))
 
