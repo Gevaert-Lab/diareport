@@ -48,7 +48,7 @@ DOWN <-  dim(data$toptable %>% filter(differential_expressed == 'DOWN'))[1]
  
 if ( UP > 0 | DOWN > 0   ) { 
   log_info('DE precursor found')
-  cat('Boxplot intensities of the top 10 DE precursor ordered by log2FC')
+  cat('Boxplot intensities of the top 10 DE precursors ordered by log2FC')
     ## peptide
     d_l <- data$toptable %>% filter(differential_expressed == 'DOWN') %>% 
             arrange(logFC) %>% head(5)%>%   pull(precursor_id)

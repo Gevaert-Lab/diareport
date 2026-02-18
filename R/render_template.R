@@ -709,7 +709,7 @@ render_dia_report <- function(params_report, template, report_folder, report_fil
   params_report$qf_obj <-   file.path(temp_work_dir,basename(template_source_folder),'qf_in.RDS'  )
   params_report$de_obj <-   file.path(temp_work_dir,basename(template_source_folder),'DEcomp_in.RDS'  )
 
-
+  
   if (template == "Template_DIA-NN_dev_A.qmd" | template == 'Template_DIA-NN_peptide_dev_A.qmd'| template == 'Template_DIA-NN_dev_EV.qmd'| template == 'Template_DIA-NN_peptide_dev_EV.qmd' ){
     saveRDS(result$part_item, file.path(temp_work_dir,basename(template_source_folder), 'part_item.RDS'  ))
     saveRDS(result$part_value, file.path(temp_work_dir,basename(template_source_folder), 'part_value.RDS'  ))
