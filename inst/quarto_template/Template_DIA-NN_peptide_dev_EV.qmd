@@ -269,8 +269,8 @@ df <- df %>% mutate( type =sapply(
           if (is.na(second_part)) return(NA)
           # If there's a semicolon, split and check for BOVIN
           splitted <- unlist(str_split(second_part, ";"))
-          if ("BOVINE" %in% splitted) {
-            return("BOVINE")
+          if ( ! (  'HUMAN' %in% splitted)) {
+            return("CONTAMINANT")
           } else { 
             return("HUMAN")
           }
@@ -281,13 +281,16 @@ count_precursor <- df %>% dplyr::count(type)
 
 
 ## get the list of the precursor
+search_map <- c("HUMAN" = "HUMAN", "CONTAMINANT" = params$contaminant_str)
+type_names <- names(search_map) # This gives you c("HUMAN", "CONTAMINANT")
 
- type_names <- c('BOVINE','HUMAN')
+
+ #type_names <- c('CONTAMINANT','HUMAN')
   
   # Create a named list of Precursor.Id vectors, one per tissue
   precursor_lists <- lapply(type_names, function(type) {
     as.data.frame(rowData(pe[['precursor_']])) %>%
-      filter(str_detect (Protein.Names ,type )) %>%
+      filter(str_detect (Protein.Names ,search_map[type] )) %>%
       pull(Precursor.Id)
   })
   
@@ -297,7 +300,7 @@ count_precursor <- df %>% dplyr::count(type)
   total_ammount <- assay(pe[['precursor_']]) %>% base::colSums(na.rm = TRUE)
   
   d <- data.frame(
-  Sample = names(assay(pe[['precursor_']])[precursor_lists[['BOVINE']], ] %>% base::colSums(na.rm=TRUE))
+  Sample = names(assay(pe[['precursor_']])[precursor_lists[['CONTAMINANT']], ] %>% base::colSums(na.rm=TRUE))
 )
  
   for (a in names(precursor_lists)){
@@ -316,18 +319,26 @@ count_precursor <- df %>% dplyr::count(type)
 
 cont_precursor <- ggplot(count_precursor, aes(x = "", y = n, fill = type)) +
   geom_bar(stat = "identity") +
+   scale_fill_manual(values = c(
+    "CONTAMINANT" = "#F8766D",
+    "HUMAN" = "#00BFC4"
+  ))+
   labs(y = "# Precursor", x = "", fill = "Type") 
 
 print(cont_precursor)
 
 plot_perc <- ggplot( d_visual, aes(x= Sample, y = percentage ,fill = Contaminant ) ) +  
   geom_col(position = "stack") +
+   scale_fill_manual(values = c(
+    "CONTAMINANT" = "#F8766D",
+    "HUMAN" = "#00BFC4"))+ 
    scale_x_discrete(guide = guide_axis(angle = 90) )  + ylab("percentage of precursors") 
 
 ggsave(file.path(params$folder_prj,"Result","EV_contaminant_percentage_precursor_intensity.pdf"), 
        plot = plot_perc, width = 8.27, height = 11.69, units = "in")
 
 print(plot_perc)
+```
 ```
 
 

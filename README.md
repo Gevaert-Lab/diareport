@@ -20,14 +20,16 @@ The statistical analysis is powered by the **MSqrob2** and **QFeatures** package
  
         BiocManager::install(c("QFeatures", "SummarizedExperiment", "MsCoreUtils", "msqrob2"))
     ```
-3.  **Install PhantomJS:** ` webshot::install_phantomjs()`
+3.  **Install R Package:** `install.packages(c("devtools", "webshot2", "chromote"))`
 
-4.  **Install devtools:** `install.packages("devtools")`
-
-5.  **Install Quarto:**
+4.  **Install Quarto (version > 1.8.25):**
 
     Follow the instructions on the [Quarto website](https://quarto.org/docs/download/).
 
+5.  **Browser Requirement (for Report Exports)**
+     `webshot2` is used to capture static snapshots of interactive plots. It requires a *Chromium-based browser* (Google Chrome, Microsoft Edge, or Chromium) to be installed on your system.
+     
+     **Windows Users**: If you encounter a "path to Chrome" error, you must manually point R to your browser executable. You can add this to your .Renviron file or run it at the start of your session: `Sys.setenv(CHROMOTE_CHROME = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe")`
 ------------------------------------------------------------------------
 
 ## 🛠 How to Install the diareport Package
@@ -164,7 +166,7 @@ params <- list(
 render_dia_report(params, template_file, report_target_folder, output_filename)
 ```
 
-*Remark*: The fully rendered  HTML report is available online: https://cloud.cmb.ugent.be/index.php/s/a2rgtEHTe5EWCQP
+*Remark*: The fully rendered  HTML report is available online: https://zenodo.org/records/18632731
 
 ------------------------------------------------------------------------
 
