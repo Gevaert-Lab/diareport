@@ -1318,7 +1318,6 @@ read_DIANN_report <- function( params ){
 #' @importFrom tibble tibble
 #' @importFrom SummarizedExperiment 'colData<-'
 import2_qfeature <- function (diaNN_data, design, params, min_col_need_design, diann_colname, task ){
-
   is_empty <- function(contrast) {
     return(length(contrast) == 0 || (length(contrast) == 1 && contrast == ''))
   }

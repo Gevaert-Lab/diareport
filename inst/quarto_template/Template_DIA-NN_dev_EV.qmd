@@ -1,5 +1,5 @@
 ---
-title: "DE Analysis Report (Protein): `r params$title`"
+title: "DE Analysis Report (EV Proteomics): `r params$title`"
 subtitle: "`r params$subtitle`"
 author: "`r params$author`"
 format: 
@@ -409,7 +409,8 @@ DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample
                              scroller = TRUE, dom = 'Bfrtip',
                              autoWidth = TRUE
                              ),
-              )
+              ) %>% 
+  formatPercentage(columns = 'pNA', digits = 2) # Multiplies by 100 and adds %
 
 ```
 
@@ -493,7 +494,7 @@ htmltools::tagList(plotly_list)
 
 ## EV Protein Marker
 
-In this section, the protein intensities of 8 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1, GAG-EGFP) are summarized for all groups. The dark dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$. If some markers are not shown, it means that they are not identified/ quantified in the experiment. 
+In this section, the protein intensities of 7 EV marker proteins (CD9, CD63, SDCBP, CD8, TSG101, PDCD6IP, FLOT1) are summarized for all groups. The dark dot represents the mean of the sample intensities for each protein, and the length of the bar corresponds to the interval $\mu \pm \sigma$. If some markers are not shown, it means that they are not identified/ quantified in the experiment. 
 
 ```{r protein_marker}
 #| results: asis
@@ -685,7 +686,7 @@ log_info('Running Analysis for each comparison..')
     # reas_part_item  <-  readRDS(params$part_item )
     #res_part_value  <- readRDS(params$part_value )
     diareport::render_child(data = res_part_item[[cmp]],
-                  pe =pe,
+                  pe = pe,
                   label = cmp , 
                   sample_rel = res_part_value[[cmp]] ,
                   path=file.path(params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),  

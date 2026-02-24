@@ -1,5 +1,5 @@
 ---
-title: "DE Analysis Report (Precursor): `r params$title`"
+title: "DE Analysis Report (EV Precursor): `r params$title`"
 subtitle: "`r params$subtitle`"
 author: "`r params$author`"
 format: 
@@ -402,7 +402,8 @@ DT::datatable( as.data.frame(nNA(pe[["peptideNorm"]])$nNAcols) %>% rename(  Samp
                              scroller = TRUE, dom = 'Bfrtip',
                              autoWidth = TRUE
                              ),
-              )
+              ) %>% 
+  formatPercentage(columns = 'pNA', digits = 2) # Multiplies by 100 and adds %
 
 ```
 

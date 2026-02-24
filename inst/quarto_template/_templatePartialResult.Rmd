@@ -22,7 +22,13 @@ part_int <- sample_rel
 
 
 perc_field <- part_table %>% colnames() %>%  stringr::str_subset('perc') 
-DT::datatable(part_table  ,
+
+part_table_clean <- part_table %>%
+  mutate(across(all_of(perc_field), as.numeric))
+
+log_info('{print(sapply(part_table_clean[perc_field], class))}')
+
+DT::datatable(part_table_clean  ,
                rownames = FALSE, 
              extensions = c('FixedColumns', 'Scroller'),
              options = list(fixedColumns = TRUE, scrollY = 600, scrollX = TRUE,
@@ -32,7 +38,10 @@ DT::datatable(part_table  ,
  )  %>%  formatStyle(
     'Protein.Group',
     'text-align' = 'left'  
-  )   %>%  formatString(columns=perc_field, suffix='%')
+  )   %>%  formatRound(columns = perc_field, digits = 2) 
+  #%>% nformatString(columns = perc_field, suffix = '%')
+
+
 
 write.csv2(part_table, file= file.path(path,paste0("Exclusive_protein_notinDE",".csv")),row.names=FALSE)
 

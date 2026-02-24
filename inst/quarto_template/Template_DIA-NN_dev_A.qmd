@@ -313,7 +313,8 @@ DT::datatable( as.data.frame(nNA(pe[["proteinRS"]])$nNAcols) %>% rename(  Sample
                              scroller = TRUE, dom = 'Bfrtip',
                              autoWidth = TRUE
                              ),
-              )
+              )%>% 
+  formatPercentage(columns = 'pNA', digits = 2) # Multiplies by 100 and adds %
 
 ```
 

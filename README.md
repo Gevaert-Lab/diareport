@@ -112,6 +112,7 @@ params <- list(
 # To run the analysis:
 render_dia_report(params, template_file, report_target_folder, output_filename)
 ```
+*Remark*: The fully rendered  HTML report related UPS2 dataset is available online: https://zenodo.org/records/18701402
 
 ------------------------------------------------------------------------
 
@@ -166,7 +167,7 @@ params <- list(
 render_dia_report(params, template_file, report_target_folder, output_filename)
 ```
 
-*Remark*: The fully rendered  HTML report is available online: https://zenodo.org/records/18632731
+*Remark*: The fully rendered  HTML report is available online: https://zenodo.org/records/18754965
 
 ------------------------------------------------------------------------
 

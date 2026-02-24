@@ -308,8 +308,7 @@ Each comparison is presented in a dedicated tab containing a volcano plot, a hea
 results table. In addition, features detected exclusively in one experimental condition are highlighted.
 
 A fully rendered example HTML report is available online:
-https://doi.org/10.5281/zenodo.18632731
-
+https://zenodo.org/records/18754965
 
 ## Export only the `QFeatures` object (skip differential expression analysis)
 
