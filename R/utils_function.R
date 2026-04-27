@@ -1225,7 +1225,6 @@ read_DIANN_report <- function( params ){
     return( list(error= err, status= 1, w_diann =NULL, df_design = NULL  ))
   } )
 
-
    checkDIANN <- check_columns_presence(data , min_features = append(lst_wide_columns, params$quantitative_features))
    if (checkDIANN$status == 1 ) {
      checkDIANN$error <- paste( 'DIA-NN report not recognized. It should contains at least the following columns:',params$quantitative_features,sep='\n')

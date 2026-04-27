@@ -237,7 +237,7 @@ The precursor intensities are:
 
 After these steps, the quantitaive features used in the downstream analysis are:
 
-- Number of precursor identified/quantified is : **`{r} dim(assay(pe[['peptideNorm']]))[1]`**
+- Number of precursors identified/quantified is : **`{r} dim(assay(pe[['peptideNorm']]))[1]`**
 
 ```{r normalization_plot}
 
@@ -422,7 +422,7 @@ log_info('Running Analysis for each comparison..')
    
 
     if ( dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1] <= 5 || dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1]  >=  50     ){
-      cat(' Not enough DE precursor (< 5) or too many DE precursor for heatmap visualization \n')
+      cat(' Not enough DE precursors (< 5) or too many DE precursors for heatmap visualization \n')
     }else{
       
     #filt_val <- unlist(str_split(substring(gsub(params$contrast, ' ', (gsub(' - ','',cmp))), 2),' ' ))
@@ -461,7 +461,7 @@ log_info('Running Analysis for each comparison..')
 
 ## Summary of the DE precursor
 
-In the table you can find a summaries of the number of DE precursors found in all the comparisons. The overlapping of DE precursors among the comparisons is also showed using an upset plot.
+In the table you can find a summary of the number of DE precursors found in all the comparisons. The overlapping of DE precursors among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
 log_info('DE Summary computation...')

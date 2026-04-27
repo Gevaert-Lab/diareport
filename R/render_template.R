@@ -133,7 +133,12 @@ validate_params_qfeatobj <- function(params) {
       check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn"),
       msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn]"
     ),
-    
+    quantitative_features= list(
+      type="string",
+      check = function(x) x %in%  c("Precursor.Quantity", "Precursor.Normalised"),
+      msg = "DIANN Quantitative features allowed are: [Precursor.Quantity , Precursor.Normalised]"
+    )
+    ,
     pep_per_prot= list(
       type = "numeric",
       check = function(x) x > 0,

@@ -346,8 +346,8 @@ The precursor intensities are:
 
 After these steps, the quantitative features used in the downstream analysis are:
 
--   Number of precursor identified/quantified is : **`{r} dim(assay(pe[['precursor']]))[1]`**
--   Number of protein identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
+-   Number of precursors identified/quantified is : **`{r} dim(assay(pe[['precursor']]))[1]`**
+-   Number of proteins identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
 
 ```{r normalization_plot}
 #| lightbox: false
@@ -713,7 +713,7 @@ log_info('Running Analysis for each comparison..')
 
 ## Summary of the DE proteins
 
-The table shows a summaries of the number of DE proteins found in all comparisons. The overlap of DE proteins among the comparisons is also showed using an upset plot.
+The table shows a summary of the number of DE proteins found in all comparisons. The overlap of DE proteins among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
 #| lightbox: true

@@ -26,7 +26,7 @@ perc_field <- part_table %>% colnames() %>%  stringr::str_subset('perc')
 part_table_clean <- part_table %>%
   mutate(across(all_of(perc_field), as.numeric))
 
-log_info('{print(sapply(part_table_clean[perc_field], class))}')
+#log_info('{print(sapply(part_table_clean[perc_field], class))}')
 
 DT::datatable(part_table_clean  ,
                rownames = FALSE, 

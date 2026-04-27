@@ -250,8 +250,8 @@ The precursor intensities are:
 
 After these steps, the quantitative features used in the downstream analysis are:
 
--   Number of precursor identified/quantified is : **`{r} dim(assay(pe[['precursor']]))[1]`**
--   Number of protein identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
+-   Number of precursors identified/quantified is : **`{r} dim(assay(pe[['precursor']]))[1]`**
+-   Number of proteins identified/quantified is : **`{r} dim(assay(pe[['proteinRS']]))[1]`**
 
 ```{r normalization_plot}
 
