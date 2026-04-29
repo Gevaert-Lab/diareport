@@ -95,7 +95,7 @@ knitr::kable(
 This is the same EDF file, with an additional column specifying batch information, which is correctly parsed by diareport. To include Batch as a confounder in the statistical model, set the parameter
 *confounder_list = c("Batch")*.
 
-Differential expression analysis corrected for batch effects can then be performed by specifying the model formula:
+Differential expression analysis corrected for batch effect can then be performed by specifying the model formula:
 *~ Group + Batch*.
 
 ## Run the DE analysis and generate the report
@@ -197,7 +197,7 @@ The wildstr_run parameter defines a string pattern present in all raw file names
 
 ### DIA-NN options
 In case you have applied matching between runs (MBR) in DIA-NN, you can set *mbr= TRUE* so the diareport will filter the precursors based on the right q-value columns.
-The `quantitative_features` parameter defines the type of quantitative values retrieved from the DIA-NN report. At the moment, only 'Precursor.Quantity' is supported.
+The `quantitative_features` parameter defines the type of quantitative values retrieved from the DIA-NN report. At the moment, only 'Precursor.Quantity' and 'Precursor.Normalised' are supported.
 
 ```{r , eval = FALSE, echo = TRUE }
 params <- list(

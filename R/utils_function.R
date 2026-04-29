@@ -818,7 +818,9 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if  (  params$normalization == 'vsn'){
+    if ( ! params$quantitative_features == 'Precursor.Normalised'){
+
+      if  (  params$normalization == 'vsn'){
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
                        name = "precursorNorm")
 
@@ -826,8 +828,12 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
                        name = "precursorNorm")
     }
-    #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
-    #                           name = "precursorNorm")
+
+  }else{
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+
+    pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+  }
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -915,7 +921,9 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if  (  params$normalization == 'vsn'){
+  if ( ! params$quantitative_features == 'Precursor.Normalised'){
+
+      if  (  params$normalization == 'vsn'){
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
                        name = "precursorNorm")
 
@@ -923,6 +931,14 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
       pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
                        name = "precursorNorm")
     }
+
+  }else{
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+
+    pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+  }
+
+  
     #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
     #                           name = "precursorNorm")
 
@@ -1015,13 +1031,21 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if  (  params$normalization == 'vsn'){
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
-                                  name = "peptideNorm")
-    }else{
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
-                                  name = "peptideNorm")
-    }
+  if ( ! params$quantitative_features == 'Precursor.Normalised'){
+      if  (  params$normalization == 'vsn'){
+          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
+                                      name = "peptideNorm")
+        }else{
+          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
+                                      name = "peptideNorm")
+        }
+
+  }else{
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the peptideNorm layer')
+      pe_[["peptideNorm"]] <- pe_[["peptideLog"]]
+  }
+
+  
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -1098,13 +1122,19 @@ processing_qfeat_peptide_ev <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if  (  params$normalization == 'vsn'){
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
-                                  name = "peptideNorm")
-    }else{
-      pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
-                                  name = "peptideNorm")
-    }
+    if ( ! params$quantitative_features == 'Precursor.Normalised'){
+      if  (  params$normalization == 'vsn'){
+          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
+                                      name = "peptideNorm")
+        }else{
+          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
+                                      name = "peptideNorm")
+        }
+
+  }else{
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the peptideNorm layer')
+      pe_[["peptideNorm"]] <- pe_[["peptideLog"]]
+  }
 
     evann_path <- system.file("quarto_template", "ProteinAnnotationsShotList.txt", package = "diareport")
 

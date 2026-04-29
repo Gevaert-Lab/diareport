@@ -1,3 +1,5 @@
+
+[![Build and Push Docker Image](https://github.com/Gevaert-Lab/diareport/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Gevaert-Lab/diareport/actions/workflows/release.yml)
 # 🎯 diareport R Package
 
 Welcome to **DiaReport** — your ultimate companion for differential expression (DE) reports on DIA proteomics data. 🧑‍🔬🔬
@@ -199,7 +201,7 @@ The parameters must be specified in a YAML file. You can find an example in `par
 -   **contaminant_str**: String marking contaminants in the FASTA file (e.g., *Cont*)
 -   **cofounder_list**: List of confounder names for analysis
 -   **PCA_comparison**: List of confounder names for PCA plots (e.g., *Group-ConfA*)
--   **quantitative_features**: Quantitative feature column to use
+-   **quantitative_features**: Quantitative feature to use [`Precursor.Quantity` (default option), `Precursor.Normalized`],
 -   **filtPerGroup**: Filtering of NaN values based on `nNonZero`, applied to at least one group (`at_least_one`), all groups (`all`), or across all samples (empty string `''`)
 -   **mbr**: If MBR is used in DIA-NN, Lib.Q-value and Lib.PG.Q-values are used to select precursors instead of Global.Q-value & Global.PG.Q-value (Boolean: TRUE / FALSE)
 -   **wildstr_run**: Wildcard string for run file identification (default: CMB-)
@@ -239,3 +241,42 @@ Example:
 The EDF file may also include confounder columns, which can be used in confounder analysis, PCA plots, and as fixed effects in the linear model.
 
 ------------------------------------------------------------------------
+
+
+## 🐳 Docker version 
+
+`diareport` is available as a Docker image based on R/RStudio, with all required dependencies pre-installed.
+
+Before proceeding, ensure you have Docker installed and running on your machine. If you haven't installed it yet, you can download it from the official Docker website.
+
+**Quick Start**
+
+- Create a docker-compose.yml file in your working directory with the following content:``` yaml
+``` yaml
+version: "3.9"
+services:
+  rstudio:
+    image: aarge/gevaertlab_diareport:latest   
+    container_name: rstudio-diareport
+    environment:
+      - PASSWORD=changeme
+      - CHROMOTE_CHROME=/usr/bin/google-chrome
+    ports:
+      - "8787:8787"
+    volumes:
+      - "./:/home/rstudio/work"
+    shm_size: '1gb'
+```
+**Note on File Access**: 
+The line - "./:/home/rstudio/work" mounts your current local directory to the container. 
+This allows the RStudio instance inside the container to access your local files. Any scripts or data you save into the /home/rstudio/work directory while in RStudio will be immediately accessible on your local machine, and your work will persist even after you stop or remove the container.
+
+- Run the following command in your terminal:
+```bash
+docker compose up -d
+```
+- Once the container is running, open your web browser and navigate to:
+    - 👉 [http://localhost:8787](http://localhost:8787)  
+    - **Username:** `rstudio`  
+    - **Password:** `changeme` (or whatever was set in `docker-compose.yml`)  
+
