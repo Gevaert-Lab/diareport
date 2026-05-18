@@ -316,8 +316,8 @@ validate_params <- function(params) {
     ),
     normalization = list(
       type = "string",
-      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn"),
-      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn]"
+      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn","medianOfRatios",'logMedian'),
+      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn medianOfRatios logMedian]"
     ),
     FC_thr = list(
       type = "numeric",

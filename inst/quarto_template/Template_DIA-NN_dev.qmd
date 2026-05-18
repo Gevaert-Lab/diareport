@@ -463,7 +463,7 @@ log_info('Running Analysis for each comparison..')
 
 ## Summary of the DE proteins
 
-The table shows a summarry of the number of DE proteins found in all comparisons. The overlap of DE proteins among the comparisons is also showed using an upset plot.
+The table shows a summary of the number of DE proteins found in all comparisons. The overlap of DE proteins among the comparisons is also showed using an upset plot.
 
 ```{r upset plot}
 log_info('DE Summary computation...')
