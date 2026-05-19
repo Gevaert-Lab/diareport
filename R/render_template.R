@@ -128,10 +128,10 @@ validate_params_qfeatobj <- function(params) {
       check = function(x) x %in% c("medianPolish", "RobustSummary", "colMeans", "colMedians"),
       msg = "Aggregation method must be one of: medianPolish, RobustSummary, colMeans, colMedians."
     ),
-    normalization = list(
+  normalization = list(
       type = "string",
-      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn"),
-      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn]"
+      check = function(x) x %in%  c("sum", "max", "center.mean", "center.median", "div.mean", "div.median", "diff.median", "quantiles","quantiles.robust","vsn","medianOfRatios",'logMedian'),
+      msg = "Normalization must be a recognized method among: [sum max center.mean center.median div.mean div.median diff.median quantiles quantiles.robust vsn medianOfRatios logMedian]"
     ),
     quantitative_features= list(
       type="string",
