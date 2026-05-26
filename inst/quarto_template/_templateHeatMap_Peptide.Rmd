@@ -34,7 +34,8 @@ data <-  assay(pe[["peptideNorm"]])[selected,sample_rel]
     #log_info("{paste(dim(data), collapse = '\n')}")
     #log_info(file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
 
-    #heatmaply::heatmaply(data, scale = "none" , dendrogram =  "none", width = 1200 , height =900 ,   cexRow = 1, cexCol = 0.8 , file = )    
+    # heatmaply::heatmaply(data, scale = "none" , dendrogram =  "none", width = 1200 , height =900 ,  
+    #              cexRow = 1, cexCol = 0.8 , file = )    
 
     
   p <- heatmaply::heatmaply(data, scale = "none", 
@@ -44,6 +45,8 @@ data <-  assay(pe[["peptideNorm"]])[selected,sample_rel]
     
    docker_save_pdf(p,  file.path(path,paste0("Heatmap_DE_proteins",".pdf"))) 
     
+  htmltools::tagList(p)
+
   } else {
     cat ('Not enough DE peptides (OR) Too many DE precursors for heatmap visualization')
 }

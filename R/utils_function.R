@@ -1035,15 +1035,14 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
 
   
-
   if ( ! params$normalization == 'vsn'){
 
   log_info('Intensity log tranformation')
 
   tryCatch( expr = {
     pe_ <- logTransform(pe_, base = 2, i = "precursor",
-                        name = "peptideLog")
-    pe_ <- infIsNA(pe_, i='peptideLog')
+                        name = "precursorLog")
+    pe_ <- infIsNA(pe_, i='precursorLog')
 
   },error = function(err){
     print(paste("Q-feature Log-trasformation:  ",err))
@@ -1059,7 +1058,7 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
     if ( params$quantitative_features == 'Precursor.Normalised'){
        
       log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
-      pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+      pe_[["peptiderNorm"]] <- pe_[["precursorLog"]]
   
        } else{
         input_layer <- ifelse(params$normalization == 'vsn', "precursor", "precursorLog")
@@ -1080,13 +1079,13 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
               MARGIN = 2,
               STATS = norm_func(pe_, input_layer), # Executes the function dynamically!
               i = input_layer,
-              name = "precursorNorm" )
+              name = "peptideNorm" )
         }else{
             pe_ <- normalize(
                       object = pe_, 
                       method = params$normalization, 
                       i = input_layer,
-                      name = "precursorNorm" )
+                      name = "peptideNorm" )
         }
         
     }

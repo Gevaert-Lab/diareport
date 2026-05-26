@@ -49,6 +49,9 @@ if (dim(data)[1] > 5) {
     cexRow = 1, cexCol = 0.8)
     
    docker_save_pdf(p, file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+    
+    htmltools::tagList(p)
+
 
   #   
   # tmp <- heatmaply::heatmaply(data, scale = "column",  dendrogram = "none",cexRow = 1, file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
