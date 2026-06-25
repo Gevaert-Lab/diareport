@@ -8,6 +8,7 @@ library(htmlwidgets)
 library(webshot2)
 
 docker_save_pdf <- function(widget, filename, width = 950, height = 900) {
+  Sys.setenv(CHROMOTE_CHROME_ARGS = "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu")
   temp_h <- tempfile(fileext = ".html")
   htmlwidgets::saveWidget(widget, temp_h, selfcontained = TRUE)
   webshot2::webshot(url = temp_h, file = filename, vwidth = width, vheight = height)
@@ -20,8 +21,20 @@ log_info('Heatmap Visual for proteins ...')
 selected <- data$toptable %>% filter(differential_expressed %in% c('UP','DOWN'))  %>% pull(Uniprot_id)
 
 #app <- as.data.frame(colData(pe)) %>% filter( Group %in% sample_rel)%>% arrange(Group) %>% dplyr::select(- SampleName)  
+# sample_rel
+ordered_sample <- as.data.frame(colData(pe)) %>%
+  # Force row names into a dedicated column if Sample_Number isn't explicitly there
+  tibble::rownames_to_column(var = "Sample_") %>% 
+  
+  # Filter to retain ONLY the samples relevant to the current comparison loop
+  # (Assuming sample_rel contains the target sample IDs for this specific contrast)
+  filter(Sample_ %in% sample_rel) %>% 
+  
+  # Group blocks together perfectly
+  arrange(Group) %>% pull(Sample_)
 
-data <-  assay(pe[["proteinRS"]])[selected,sample_rel]
+
+data <-  assay(pe[["proteinRS"]])[selected,ordered_sample,drop = FALSE]
 
 log_info(dim(data)[1])
 log_info(dim(data)[2])
@@ -42,21 +55,78 @@ if (dim(data)[1] > 5) {
   #                 widget_id = paste0("heatmap_", sample.int(1e6, 1)),
   #                 file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")), 
   #                 cexRow = 1 )
+  
+clean_matrix <- na.omit(data)
 
-  p <- heatmaply::heatmaply(data, scale = "none", 
-    dendrogram = "none", 
+# Step B: Remove rows containing ANY missing values (na.omit)
+clean_matrix <- na.omit(clean_matrix)
+
+# Step C: Remove zero-variance rows (Clustering will fail if a row has 0 variance)
+if (nrow(clean_matrix) > 0) {
+  row_vars <- apply(clean_matrix, 1, var, na.rm = TRUE)
+  clean_matrix <- clean_matrix[row_vars > 0 & !is.na(row_vars), , drop = FALSE]
+}
+
+# Final check: Do we still have rows left after stripping all NAs?
+n_rows <- nrow(clean_matrix)
+n_cols <- ncol(clean_matrix)
+
+#if (n_rows > 5) { # Needs at least a few rows to cluster meaningfully
+  
+  # Dynamically scale font size
+  col_font_size <- max(7.5, min(11, 140 / n_cols)) 
+  row_font_size <- max(8.5, min(12, 100 / n_rows))
+
+  # Establish explicit pixel dimensions (adding extra width space for the dendrogram tree)
+  calc_width  <- max(1000, n_cols * 15 + 300)
+  calc_height <- max(600, n_rows * 16 + 180)
+
+  # Truncate row names safely
+  rownames(clean_matrix) <- rownames(clean_matrix) %>%
+    stringr::str_replace_all(";.*", " (+)") %>%
+    stringr::str_trunc(width = 20, side = "right")
+
+  # ==============================================================================
+  # 2. Build the Heatmap with Row Clustering
+  # ==============================================================================
+  p <- heatmaply::heatmaply(
+    clean_matrix,
+    scale = "row",
+    dendrogram = "row",   
+    Rowv = TRUE,          
+    Colv = FALSE,         
+    plot_method = "plotly", 
+    
+    # LOCK DIMENSIONS: Forces the browser to respect dimensions instead of guessing
+    width = 1000,         
+    height = 750,        
+    
+    # HARDCODE LAYOUT RATIO: Dedicates 80% width to heatmap, 20% to dendrogram tree
+    subplot_widths = c(0.80, 0.20),
+    
     widget_id = paste0("heatmap_", sample.int(1e6, 1)),
-    cexRow = 1, cexCol = 0.8)
+    colors = viridis::viridis(n = 256, option = "viridis"),
+    na.value = "#EAEAEA",
+    grid_gap = 0.5,
+    grid_color = "#FFFFFF",
     
-   docker_save_pdf(p, file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
+    fontsize_row = row_font_size,
+    fontsize_col = col_font_size,
+    column_text_angle = 45,       
     
-    htmltools::tagList(p)
+    margins = c(80, 120, 30, 30), 
+    show_labels = TRUE   
+  )
 
+  # Save your pristine PDF copy
+  #docker_save_pdf(p, file.path(path, paste0("Heatmap_DE_proteins", ".pdf")))
 
-  #   
-  # tmp <- heatmaply::heatmaply(data, scale = "column",  dendrogram = "none",cexRow = 1, file =  file.path(path,paste0("Heatmap_DE_proteins",".pdf")))
-  #   rm(tmp)
-  } else {
+  # ==============================================================================
+  # 3. Direct Native Render (No layout-breaking `div` wrapper)
+  # ==============================================================================
+  knitr::knit_print(p) 
+
+    } else {
     cat ('Not enough DE proteins for heatmap visualization')
   }  
 
