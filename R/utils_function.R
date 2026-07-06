@@ -797,7 +797,6 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
   error <- ''
   status <- 0
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
-
   log_info('Intensity log tranformation')
   if ( ! params$normalization == 'vsn'){
     tryCatch( expr = {
@@ -818,22 +817,44 @@ processing_qfeat_protein_ev <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if ( ! params$quantitative_features == 'Precursor.Normalised'){
+    if ( params$quantitative_features == 'Precursor.Normalised'){
 
-      if  (  params$normalization == 'vsn'){
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
-                       name = "precursorNorm")
-
-    }else{
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
-                       name = "precursorNorm")
-    }
-
-  }else{
       log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+      pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+    }else {
+      input_layer <- ifelse(params$normalization == 'vsn', "precursor", "precursorLog")
+      sweep_methods <- c("medianOfRatios", "logMedian")
+      if (params$normalization %in% sweep_methods) {
+          method_lookup <- c(
+            "medianOfRatios" = "nfLogMedianOfRatios",
+            "logMedian"      = "nfLogMedian"
+          )
+          # Dynamically find the msqrob2 function name. 
+        # If your param is 'medianOfRatios', we map it to 'nfLogMedianOfRatios'
+          func_name <- method_lookup[params$normalization]
+          norm_func <- getFromNamespace(func_name, ns = "msqrob2")
 
-    pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+          # Execute the sweep dynamically
+          pe_ <- QFeatures::sweep(
+            x = pe_,
+            MARGIN = 2,
+            STATS = norm_func(pe_, input_layer), # Executes the function dynamically!
+            i = input_layer,
+            name = "precursorNorm"
+          )
+      
+      }else{
+        # Standard QFeatures normalization path (vsn, center.median, etc.)
+    pe_ <- normalize(
+      object = pe_, 
+      method = params$normalization, 
+      i = input_layer,
+      name = "precursorNorm"
+    )
+        
+      }
   }
+
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -901,16 +922,16 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
   status <- 0
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
 
-  log_info('Intensity log tranformation')
+ log_info('Intensity log tranformation')
   if ( ! params$normalization == 'vsn'){
-  tryCatch( expr = {
-    pe_ <- logTransform(pe_, base = 2, i = "precursor",
-                       name = "precursorLog")
+    tryCatch( expr = {
+      pe_ <- logTransform(pe_, base = 2, i = "precursor",
+                          name = "precursorLog")
 
-  },error = function(err){
-    print(paste("Q-feature Log-trasformation:  ",err))
-    return( list(error= err, status= 1,q_feat =NULL ))
-  } )
+    },error = function(err){
+      print(paste("Q-feature Log-trasformation:  ",err))
+      return( list(error= err, status= 1,q_feat =NULL ))
+    } )
   }
 
   # pe <- logTransform(pe, base = 2, i = "precursor",
@@ -921,26 +942,44 @@ processing_qfeat_protein <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-  if ( ! params$quantitative_features == 'Precursor.Normalised'){
+    if ( params$quantitative_features == 'Precursor.Normalised'){
 
-      if  (  params$normalization == 'vsn'){
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursor",
-                       name = "precursorNorm")
-
-    }else{
-      pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
-                       name = "precursorNorm")
-    }
-
-  }else{
       log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+      pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+    }else {
+      input_layer <- ifelse(params$normalization == 'vsn', "precursor", "precursorLog")
+      sweep_methods <- c("medianOfRatios", "logMedian")
+      if (params$normalization %in% sweep_methods) {
+          method_lookup <- c(
+            "medianOfRatios" = "nfLogMedianOfRatios",
+            "logMedian"      = "nfLogMedian"
+          )
+          # Dynamically find the msqrob2 function name. 
+        # If your param is 'medianOfRatios', we map it to 'nfLogMedianOfRatios'
+          func_name <- method_lookup[params$normalization]
+          norm_func <- getFromNamespace(func_name, ns = "msqrob2")
 
-    pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+          # Execute the sweep dynamically
+          pe_ <- QFeatures::sweep(
+            x = pe_,
+            MARGIN = 2,
+            STATS = norm_func(pe_, input_layer), # Executes the function dynamically!
+            i = input_layer,
+            name = "precursorNorm"
+          )
+      
+      }else{
+        # Standard QFeatures normalization path (vsn, center.median, etc.)
+    pe_ <- normalize(
+      object = pe_, 
+      method = params$normalization, 
+      i = input_layer,
+      name = "precursorNorm"
+    )
+        
+      }
   }
 
-  
-    #pe_ <- normalize(pe_,  method = params$normalization, i = "precursorLog",
-    #                           name = "precursorNorm")
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -995,30 +1034,15 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
   status <- 0
   log_info(paste0('Assays in q-feat object: ', paste(names(pe_), collapse = ", ")) )
 
-  log_info('Summarization Precursor -> Peptide (Sum)')
-
-
-  # tryCatch( expr = {
-  #   pe_ <- aggregateFeatures(pe_, i = "precursor",
-  #                            fcol = "Stripped.Sequence",
-  #                            name = "PeptideRawSum",
-  #                            fun = aggr_mth_fun ,
-  #                            # slower but better than medianPolish
-  #                            na.rm = TRUE)
-
-  # },error = function(err){
-  #   print(paste("Q-feature Summarization Precursor -> Peptide:  ",err))
-  #   return( list(error= err, status= 1,q_feat =NULL ))
-  # } )
-
+  
   if ( ! params$normalization == 'vsn'){
 
   log_info('Intensity log tranformation')
 
   tryCatch( expr = {
     pe_ <- logTransform(pe_, base = 2, i = "precursor",
-                        name = "peptideLog")
-    pe_ <- infIsNA(pe_, i='peptideLog')
+                        name = "precursorLog")
+    pe_ <- infIsNA(pe_, i='precursorLog')
 
   },error = function(err){
     print(paste("Q-feature Log-trasformation:  ",err))
@@ -1030,22 +1054,42 @@ processing_qfeat_peptide <- function(pe_ , params, aggr_mth_fun ){
 
 
   tryCatch( expr = {
-
-  if ( ! params$quantitative_features == 'Precursor.Normalised'){
-      if  (  params$normalization == 'vsn'){
-          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
-                                      name = "peptideNorm")
-        }else{
-          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
-                                      name = "peptideNorm")
-        }
-
-  }else{
-      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the peptideNorm layer')
-      pe_[["peptideNorm"]] <- pe_[["peptideLog"]]
-  }
-
+     
+    if ( params$quantitative_features == 'Precursor.Normalised'){
+       
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+      pe_[["peptiderNorm"]] <- pe_[["precursorLog"]]
   
+       } else{
+        input_layer <- ifelse(params$normalization == 'vsn', "precursor", "precursorLog")
+        sweep_methods <- c("medianOfRatios", "logMedian")
+        if (params$normalization %in% sweep_methods) {
+            method_lookup <- c(
+              "medianOfRatios" = "nfLogMedianOfRatios",
+              "logMedian"      = "nfLogMedian"
+            )
+            # Dynamically find the msqrob2 function name. 
+          # If your param is 'medianOfRatios', we map it to 'nfLogMedianOfRatios'
+            func_name <- method_lookup[params$normalization]
+            norm_func <- getFromNamespace(func_name, ns = "msqrob2")
+
+            # Execute the sweep dynamically
+            pe_ <- QFeatures::sweep(
+              x = pe_,
+              MARGIN = 2,
+              STATS = norm_func(pe_, input_layer), # Executes the function dynamically!
+              i = input_layer,
+              name = "peptideNorm" )
+        }else{
+            pe_ <- normalize(
+                      object = pe_, 
+                      method = params$normalization, 
+                      i = input_layer,
+                      name = "peptideNorm" )
+        }
+        
+    }
+ 
 
   },error = function(err){
     print(paste("Q-feature Normalization:  ",err))
@@ -1122,19 +1166,40 @@ processing_qfeat_peptide_ev <- function(pe_ , params, aggr_mth_fun ){
 
   tryCatch( expr = {
 
-    if ( ! params$quantitative_features == 'Precursor.Normalised'){
-      if  (  params$normalization == 'vsn'){
-          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "precursor",
-                                      name = "peptideNorm")
-        }else{
-          pe_ <- QFeatures::normalize(pe_,  method = params$normalization, i = "peptideLog",
-                                      name = "peptideNorm")
-        }
+    if ( params$quantitative_features == 'Precursor.Normalised'){
+       
+      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the precursorNorm layer')
+      pe_[["precursorNorm"]] <- pe_[["precursorLog"]]
+  
+       } else{
+        input_layer <- ifelse(params$normalization == 'vsn', "precursor", "precursorLog")
+        sweep_methods <- c("medianOfRatios", "logMedian")
+        if (params$normalization %in% sweep_methods) {
+            method_lookup <- c(
+              "medianOfRatios" = "nfLogMedianOfRatios",
+              "logMedian"      = "nfLogMedian"
+            )
+            # Dynamically find the msqrob2 function name. 
+          # If your param is 'medianOfRatios', we map it to 'nfLogMedianOfRatios'
+            func_name <- method_lookup[params$normalization]
+            norm_func <- getFromNamespace(func_name, ns = "msqrob2")
 
-  }else{
-      log_info('!! Remark: Precursor.Normalised selected — Log-transformed intensities are copied as-is into the peptideNorm layer')
-      pe_[["peptideNorm"]] <- pe_[["peptideLog"]]
-  }
+            # Execute the sweep dynamically
+            pe_ <- QFeatures::sweep(
+              x = pe_,
+              MARGIN = 2,
+              STATS = norm_func(pe_, input_layer), # Executes the function dynamically!
+              i = input_layer,
+              name = "precursorNorm" )
+        }else{
+            pe_ <- normalize(
+                      object = pe_, 
+                      method = params$normalization, 
+                      i = input_layer,
+                      name = "precursorNorm" )
+        }
+        
+    }
 
     evann_path <- system.file("quarto_template", "ProteinAnnotationsShotList.txt", package = "diareport")
 

@@ -444,24 +444,25 @@ log_info('Running Analysis for each comparison..')
 
     if ( dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1] <= 5 || dim(res_de[[cmp]]$toptable %>% filter(differential_expressed %in% c('UP','DOWN')) )[1]  >=  50     ){
       cat(' Not enough DE precursors (< 5) or too many DE precursors for heatmap visualization \n')
-    }else{
-      
-    #filt_val <- unlist(str_split(substring(gsub(params$contrast, ' ', (gsub(' - ','',cmp))), 2),' ' ))
-    #print(filt_val)
-    
-    contrast_values_parsed <- diareport::parse_comparison(cmp, params$contrast,pe)
-
-    filt_val <- diareport::select_samples_comparison(contrast_values_parsed, 
-                                                     pe , 
-                                                     params$contrast)
-    
-    diareport::render_child(data = res_de[[cmp]],
-                   pe = pe,
-                   sample_rel = filt_val,
-                 label = cmp,
-                 path= file.path(  params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
-                 template='_templateHeatmap_Peptide.Rmd')
     }
+    # else{
+      
+    # #filt_val <- unlist(str_split(substring(gsub(params$contrast, ' ', (gsub(' - ','',cmp))), 2),' ' ))
+    # #print(filt_val)
+    
+    # contrast_values_parsed <- diareport::parse_comparison(cmp, params$contrast,pe)
+
+    # filt_val <- diareport::select_samples_comparison(contrast_values_parsed, 
+    #                                                  pe , 
+    #                                                  params$contrast)
+    
+    # diareport::render_child(data = res_de[[cmp]],
+    #                pe = pe,
+    #                sample_rel = filt_val,
+    #              label = cmp,
+    #              path= file.path(  params$folder_prj, "Result","Contrast",check_and_substitute_forbidden_chars(cmp)),
+    #              template='_templateHeatmap_Peptide.Rmd')
+    # }
     cat('\n\n')
     cat('\n\n')
     cat('###','Absent-from-DE Analysis')
