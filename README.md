@@ -188,7 +188,7 @@ The parameters must be specified in a YAML file. You can find an example in `par
 -   **formula**: Formula used in the linear model
 -   **contrast**: Name of the column in the experiment design file used in the model (default: Group)
 -   **aggr_method**: Summarization method used [*medianPolish, robustSummary(), colMeans(), colMedians(), base::colSums()*]
--   **normalization**: Normalization method [*sum, max, center.mean, center.median, div.mean, div.median, diff.median, quantiles, quantiles.robust, vsn*]
+-   **normalization**: Normalization method [*sum, max, center.mean, center.median, div.mean, div.median, diff.median, quantiles, quantiles.robust, vsn, medianofRatios, LogMedian*]
 -   **Proteotypic**: Include only proteotypic peptides (Boolean: TRUE / FALSE)
 -   **pep_per_prot**: Number of peptides per protein
 -   **nNonZero**: Minimum percentage of samples with non-missing values (used with `filtPerGroup`)

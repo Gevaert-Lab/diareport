@@ -277,6 +277,10 @@ filteringNA_qfeat <- function(pe_ , params, design){
       log_info('Filtering contaminants')
 
       pe_ <- filterFeatures ( pe_ ,VariableFilter("Protein.Ids", params$contaminant_str, "contains", not=TRUE))
+      #log_info('Filtering contaminants -- custom appraoch based on  Protein.Names ')
+
+      #pe_ <- filterFeatures ( pe_ ,VariableFilter("Protein.Names", params$contaminant_str, "contains", not=FALSE))
+
     }
 
   },error = function(err){
@@ -767,7 +771,6 @@ add_rowdata_detection <- function ( pe_ , design , assay ){
     val_perc = paste0('perc',v)
     rowData(pe_[[assay]])[[val_perc]] <- ((group_size[[v]] - rowData(pe_[[assay]])[[val_count]] ) / group_size[[v]]) *  100
   }
-
   return ( pe_ )
 }
 

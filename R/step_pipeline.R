@@ -68,6 +68,8 @@ step_import_qfeat_exportonly <- function(input) {
 #' @return The updated input list with pe modified at precursor level.
 step_add_rowdata_precursor <- function(input) {
   input$pe <- add_rowdata_detection(input$pe, input$design, assay = 'precursor')
+    #saveRDS(input$pe,'./Test_debug_.Rds')
+
   input
 }
 
