@@ -1,4 +1,4 @@
-FROM rocker/rstudio:4.5.0
+FROM rocker/rstudio:4.6.0
 
 
 

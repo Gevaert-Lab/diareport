@@ -1,7 +1,7 @@
 Package: diareport
 Type: Package
 Title: Differential Expression Analysis and Interactive Reporting for DIA-based Proteomics
-Version: 0.9.4
+Version: 0.9.5
 Authors@R: c(
     person(
       "Andrea", "Argentini",
