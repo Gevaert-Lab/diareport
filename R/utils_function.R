@@ -1257,12 +1257,15 @@ dfTowideDIANN_20 <- function(data, precursorquan, mbr, wide_colums) {
         wide_colums,
         .data[[precursorquan]]
       ) %>%
+       dplyr::collect() %>%                     # <-- materialize here, before pivot_wider
       tidyr::pivot_wider(
         names_from = Run,
         values_from = .data[[precursorquan]]
       )
 
-  }else{   data %>%
+  } else {
+
+    data %>%
       filter(
         Lib.PG.Q.Value <= 0.01 &
           Lib.Q.Value <= 0.01 &
@@ -1273,11 +1276,12 @@ dfTowideDIANN_20 <- function(data, precursorquan, mbr, wide_colums) {
         wide_colums,
         .data[[precursorquan]]
       ) %>%
+       dplyr::collect() %>%                     # <-- same here
       tidyr::pivot_wider(
         names_from = Run,
         values_from = .data[[precursorquan]]
-      ) }
-
+      )
+  }
 }
 
 
@@ -1309,7 +1313,7 @@ read_DIANN_report <- function( params ){
 
     if (params$DIANN_ver2){
       log_info('Reading DIA-NN PARQUET format...')
-      data <- read_parquet(params$input_file)
+      data <- arrow::open_dataset(params$input_file)
       lst_wide_columns <- c('Run', 'Precursor.Id', 'Modified.Sequence', 'Stripped.Sequence', 'Protein.Group', 'Protein.Ids', 'Protein.Names', 'Genes', 'Proteotypic')
 
     }else{
