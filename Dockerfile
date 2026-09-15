@@ -94,7 +94,7 @@ RUN npm install -g phantomjs-prebuilt
 # R packages
 # --------------------------------------------------
 # Added missing closing quote and parenthesis at the end
-RUN R -e "install.packages(c('BiocManager','remotes','ggrepel','tidyr','reactable','stringr','htmltools','purrr','ggVennDiagram','upsetjs','heatmaply','plotly','yaml','UpSetR','GGally'), repos='https://cloud.r-project.org', lib='/usr/local/lib/R/site-library'); \
+RUN R -e "install.packages(c('BiocManager','remotes','ggrepel','tidyr','reactable','stringr','htmltools','purrr','ggVennDiagram','upsetjs','heatmaply','plotly','yaml','UpSetR','GGally','DT'), repos='https://cloud.r-project.org', lib='/usr/local/lib/R/site-library'); \
           BiocManager::install(c('QFeatures','msqrob2','MSnbase'), lib='/usr/local/lib/R/site-library'); \
           remotes::install_github('Gevaert-Lab/diareport@${DIAREPORT_VERSION}', dependencies=TRUE)"
 
